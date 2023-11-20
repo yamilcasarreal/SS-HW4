@@ -27,6 +27,14 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
 
 //TODO:
 
+/*Below there are some functions that need to be writen on their enterety, have something that needs to be changed, or simply need
+to be conferred with team to decide on whether a certain change should be made.
+
+Furthermore, the abstract data type "code_seq", which I believe is a linked list, needs to be created; in addition to
+the implementation of the literal_table .
+
+ */
+
 // Generate code for the given AST
 extern code_seq gen_code_block(block_t blk); 
 // Generate code for the const-decls, cds
@@ -39,14 +47,14 @@ extern code_seq gen_code_const_defs(const_defs_t cdfs);
 extern code_seq gen_code_const_def(const_def_t cdf); 
 
 // Generate code for a single <var-decl>, vd,
-// (var_decl_t does not have a "type" attribute.)
+// var_decl_t does not have a "type" attribute.
 code_seq gen_code_var_decl(var_decl_t vd)
 {
-   // return gen_code_idents(vd.idents, vd.type);  
+   return gen_code_idents(vd.idents, vd.type);  
 }
 
 // Generate code for the identififers in idents
-// (Function uses variable type (vt) in a switch statment, unsure how to implement this with
+// Function uses variable type (vt) in a switch statment, unsure how to implement this with
 // current ast. ) Wondering if we use something like the "(id_use_get_attrs(stmt.idu)->type)"
 // which was used in the gen_code_assign_stmt function below.
 // In addition, "float_te" was deketed when it came up during lab, so I'm unsure as to whether the
@@ -224,6 +232,52 @@ extern code_seq gen_code_rel_op(token_t rel_op)
     return ret;
 }
 
+// Generate code for the expression exp
+// There is no of type "expr_logical_not" in the AST (from what I can tell); thinking of removing but need confer with team. 
+extern code_seq gen_code_expr(expr_t exp)
+{
+    switch (exp.expr_kind) {
+    case expr_bin:
+	return gen_code_binary_op_expr(exp.data.binary);
+	break;
+    case expr_ident:
+	return gen_code_ident(exp.data.ident);
+	break;
+    case expr_number:
+	return gen_code_number(exp.data.number);
+	break;
+    case expr_logical_not:
+	return gen_code_logical_not_expr(*(exp.data.logical_not));
+	break;
+    default:
+	bail_with_error("Unexpected expr_kind_e (%d) in gen_code_expr",
+			exp.expr_kind);
+	break;
+    }
+    // never happens, but suppresses a warning from gcc
+    return code_seq_empty();
+}
+
+// Generate code to put the value of the given identifier on top of the stack
+// Unsure about conditions, wondering if they should be looking for constant_idk, variable_idk, or procedure_idk instead
+// (which represent the id_kind values in id_attrs.h)
+extern code_seq gen_code_ident(ident_t id)
+{
+    assert(id.idu != NULL);
+    code_seq ret = code_compute_fp(T9, id.idu->levelsOutward);
+    assert(id_use_get_attrs(id.idu) != NULL);
+    unsigned int offset_count = id_use_get_attrs(id.idu)->offset_count;
+    assert(offset_count <= USHRT_MAX);  
+    id_attrs typ = id_use_get_attrs(id.idu)->type;
+    if (typ == float_te) {
+	ret = code_seq_add_to_end(ret,
+				  code_flw(T9, V0, offset_count));
+    } else {
+	ret = code_seq_add_to_end(ret,
+				  code_lw(T9, V0, offset_count));
+    }
+    return code_seq_concat(ret, code_push_reg_on_stack(V0, typ));
+}
 
 // End of TODO
 
@@ -327,5 +381,54 @@ code_seq gen_code_write_stmt(write_stmt_t stmt)
 }
 
 // Generate code for the expression exp
-extern code_seq gen_code_expr(expr_t exp);
+extern code_seq gen_code_binary_op_expr(binary_op_expr_t exp)
+{
+    // put the values of the two subexpressions on the stack
+    code_seq ret = gen_code_expr(*(exp.expr1));
+    ret = code_seq_concat(ret, gen_code_expr(*(exp.expr2)));
+    // check the types match
+    type_exp_e t1 = ast_expr_type(*(exp.expr1));
+    assert(ast_expr_type(*(exp.expr2)) == t1);
+    // do the operation, putting the result on the stack
+    ret = code_seq_concat(ret, gen_code_op(exp.arith_op, t1));
+}
+
+// Generate code to apply arith_op to the
+extern code_seq gen_code_arith_op(token_t arith_op)
+{
+    // load top of the stack (the second operand) into AT
+    code_seq ret = code_pop_stack_into_reg(AT);
+    // load next element of the stack into V0
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
+
+    code_seq do_op = code_seq_empty();
+    switch (arith_op.code) {
+    case plussym:
+	do_op = code_seq_add_to_end(do_op, code_fadd(V0, AT, V0));
+	break;
+    case minussym:
+	do_op = code_seq_add_to_end(do_op, code_fsub(V0, AT, V0));
+	break;
+    case multsym:
+	do_op = code_seq_add_to_end(do_op, code_fmul(V0, AT, V0));
+	break;
+    case divsym:
+	do_op = code_seq_add_to_end(do_op, code_fdiv(V0, AT, V0));
+	break;
+    default:
+	bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op",
+			arith_op.code);
+	break;
+    }
+    do_op = code_seq_concat(do_op, code_push_reg_on_stack(V0));
+    return code_seq_concat(ret, do_op);
+}
+
+// Generate code to put the given number on top of the stack
+extern code_seq gen_code_number(number_t num)
+{
+    unsigned int global_offset	= literal_table_lookup(num.text, num.value);
+    return code_seq_concat(code_seq_singleton(code_flw(GP, V0, global_offset)),code_push_reg_on_stack(V0));
+}
+
 
