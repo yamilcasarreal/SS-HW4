@@ -47,15 +47,16 @@ code_seq gen_code_var_decl(var_decl_t vd)
 
 // Generate code for the identififers in idents
 // (Function uses variable type (vt) in a switch statment, unsure how to implement this with
-// current ast. )
+// current ast. ) Wondering if we use something like the "(id_use_get_attrs(stmt.idu)->type)"
+// which was used in the gen_code_assign_stmt function below.
+// In addition, "float_te" was deketed when it came up during lab, so I'm unsure as to whether the
+// entire switch statement should be removed. 
 extern code_seq gen_code_idents(idents_t idents)
 {
     code_seq ret = code_seq_empty();
     ident_t *idp = idents.idents;
     while (idp != NULL) {
-	code_seq alloc_and_init
-	    = code_seq_singleton(code_addi(SP, SP,
-					   - BYTES_PER_WORD));
+	code_seq alloc_and_init = code_seq_singleton(code_addi(SP, SP,- BYTES_PER_WORD));
 	// switch (vt) {
 	// case float_te:
 	//     alloc_and_init
@@ -80,6 +81,43 @@ extern code_seq gen_code_idents(idents_t idents)
     return ret;
 }
 
+// Generate code for stmt
+// Uncertain on whether it's correct; uses the "float_te" , which we deleted in the lab.
+extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
+{
+    code_seq ret;
+    // put value of expression in $v0
+    ret = gen_code_expr(*(stmt.expr));
+    assert(stmt.idu != NULL);
+    assert(id_use_get_attrs(stmt.idu) != NULL);
+    type_exp_e typ = id_use_get_attrs(stmt.idu)->type;
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0, typ));
+    // put frame pointer from the lexical address of the name
+    // (using stmt.idu) into $t9
+    ret = code_seq_concat(ret,code_compute_fp(T9, stmt.idu->levelsOutward));
+    unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
+    assert(offset_count <= USHRT_MAX); 
+    switch (id_use_get_attrs(stmt.idu)->type) {
+    
+	 	case float_te:
+			ret = code_seq_add_to_end(ret,code_fsw(T9, V0, offset_count));
+			break;
+    	case bool_te:
+			ret = code_seq_add_to_end(ret,code_sw(T9, V0, offset_count));
+			break;
+    	default:
+			bail_with_error("Bad var_type (%d) for ident in assignment stmt!",
+			id_use_get_attrs(stmt.idu)->type);
+		break;
+    	}
+    return ret;
+}
+
+// Generate code for stmt
+// Not sure if this one needs to be implemented; it wasn't part of the gen_code_stmt switch case. 
+extern code_seq gen_code_call_stmt(call_stmt_t stmt);
+
+
 // End of TODO
 
 // Generate code for the var_decls_t vds to out
@@ -95,12 +133,32 @@ extern code_seq gen_code_var_decls(var_decls_t vds)
     }
     return ret;
 }
+// Generate code for stmt
+extern code_seq gen_code_stmt(stmt_t stmt)
+{
+switch (stmt.stmt_kind) {
+    case assign_stmt:
+	return gen_code_assign_stmt(stmt.data.assign_stmt);
+	break;
+    case begin_stmt:
+	return gen_code_begin_stmt(stmt.data.begin_stmt);
+	break;
+    case if_stmt:
+	return gen_code_if_stmt(stmt.data.if_stmt);
+	break;
+    case read_stmt:
+	return gen_code_read_stmt(stmt.data.read_stmt);
+	break;
+    case write_stmt:
+	return gen_code_write_stmt(stmt.data.write_stmt);
+	break;
+    default:
+		bail_with_error("Call to gen_code_stmt with an AST that is not a statement!");
+		break;
+    }
+    // The following can never execute, but this quiets gcc's warning
+    return code_seq_empty();
+}
 
-extern code_seq gen_code_stmt(stmt_t stmt);
-
-
-
-
-
-
-
+// Generate code for stmt
+extern code_seq gen_code_begin_stmt(begin_stmt_t stmt);
