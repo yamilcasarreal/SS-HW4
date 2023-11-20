@@ -25,6 +25,156 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     gen_code_output_program(bf, main_cs);
 }
 
+// Generate code for the var_decls_t vds to out
+extern code_seq gen_code_var_decls(var_decls_t vds)
+{
+    code_seq ret = code_seq_empty();
+    var_decl_t *vdp = vds.var_decls;
+    while (vdp != NULL) {
+	// generate these in reverse order,
+	// so the addressing offsets work properly
+	ret = code_seq_concat(gen_code_var_decl(*vdp), ret);
+	vdp = vdp->next;
+    }
+    return ret;
+}
+// Generate code for stmt
+extern code_seq gen_code_stmt(stmt_t stmt)
+{
+    switch (stmt.stmt_kind) {
+        case assign_stmt:
+            return gen_code_assign_stmt(stmt.data.assign_stmt);
+            break;
+        case call_stmt:
+            return gen_code_call_stmt(stmt.data.call_stmt);
+            break;
+        case begin_stmt:
+            return gen_code_begin_stmt(stmt.data.begin_stmt);
+            break;
+        case if_stmt:
+            return gen_code_if_stmt(stmt.data.if_stmt);
+            break;
+        case while_stmt:
+            return gen_code_if_stmt(stmt.data.while_stmt);
+            break;
+        case read_stmt:
+            return gen_code_read_stmt(stmt.data.read_stmt);
+            break;
+        case write_stmt:
+            return gen_code_write_stmt(stmt.data.write_stmt);
+            break;
+        case skip_stmt:
+            return gen_code_write_stmt(stmt.data.skip_stmt);
+            break;
+        default:
+            bail_with_error("Call to gen_code_stmt with an AST that is not a statement!");
+            break;
+        }
+    // The following can never execute, but this quiets gcc's warning
+    return code_seq_empty();
+}
+
+// Generate code for the list of statments given by stmts
+extern code_seq gen_code_stmts(stmts_t stmts)
+{
+    code_seq ret = code_seq_empty();
+    stmt_t *sp = stmts.stmts;
+    while (sp != NULL) {
+	ret = code_seq_concat(ret, gen_code_stmt(*sp));
+	sp = sp->next;
+    }
+    return ret;
+}
+
+// Generate code for the if-statment given by stmt
+extern code_seq gen_code_if_stmt(if_stmt_t stmt)
+{
+    // put truth value of stmt.expr in $v0
+    code_seq ret = gen_code_expr(stmt.expr);
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
+    code_seq cbody = gen_code_stmt(*(stmt.body));
+    int cbody_len = code_seq_size(cbody);
+    // skip over body if $v0 contains false
+    ret = code_seq_add_to_end(ret,code_beq(V0, 0, cbody_len));
+    return code_seq_concat(ret, cbody);
+}
+
+
+// Generate code for the read statment given by stmt
+extern code_seq gen_code_read_stmt(read_stmt_t stmt)
+{
+    // put number read into $v0
+    code_seq ret = code_seq_singleton(code_rch());
+    // put frame pointer from the lexical address of the name
+    // (using stmt.idu) into $t9
+    assert(stmt.idu != NULL);
+    ret = code_seq_concat(ret,code_compute_fp(T9, stmt.idu->levelsOutward));
+    assert(id_use_get_attrs(stmt.idu) != NULL);
+    unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
+    assert(offset_count <= USHRT_MAX);
+    ret = code_seq_add_to_end(ret,code_seq_singleton(code_fsw(T9, V0, offset_count)));
+    return ret;
+}
+code_seq gen_code_write_stmt(write_stmt_t stmt)
+{
+    // put the result into $a0 to get ready for PCH
+    code_seq ret = gen_code_expr(stmt.expr);
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(A0));
+    ret = code_seq_add_to_end(ret, code_pint());// change to code_pint()
+    return ret;
+}
+
+// Generate code for the expression exp
+extern code_seq gen_code_binary_op_expr(binary_op_expr_t exp)
+{
+    // put the values of the two subexpressions on the stack
+    code_seq ret = gen_code_expr(*(exp.expr1));
+    ret = code_seq_concat(ret, gen_code_expr(*(exp.expr2)));
+    // check the types match
+    type_exp_e t1 = ast_expr_type(*(exp.expr1));
+    assert(ast_expr_type(*(exp.expr2)) == t1);
+    // do the operation, putting the result on the stack
+    ret = code_seq_concat(ret, gen_code_op(exp.arith_op, t1));
+}
+
+// Generate code to apply arith_op to the
+extern code_seq gen_code_arith_op(token_t arith_op)
+{
+    // load top of the stack (the second operand) into AT
+    code_seq ret = code_pop_stack_into_reg(AT);
+    // load next element of the stack into V0
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
+
+    code_seq do_op = code_seq_empty();
+    switch (arith_op.code) {
+    case plussym:
+	do_op = code_seq_add_to_end(do_op, code_fadd(V0, AT, V0));
+	break;
+    case minussym:
+	do_op = code_seq_add_to_end(do_op, code_fsub(V0, AT, V0));
+	break;
+    case multsym:
+	do_op = code_seq_add_to_end(do_op, code_fmul(V0, AT, V0));
+	break;
+    case divsym:
+	do_op = code_seq_add_to_end(do_op, code_fdiv(V0, AT, V0));
+	break;
+    default:
+	bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op",
+			arith_op.code);
+	break;
+    }
+    do_op = code_seq_concat(do_op, code_push_reg_on_stack(V0));
+    return code_seq_concat(ret, do_op);
+}
+
+// Generate code to put the given number on top of the stack
+extern code_seq gen_code_number(number_t num)
+{
+    unsigned int global_offset	= literal_table_lookup(num.text, num.value);
+    return code_seq_concat(code_seq_singleton(code_flw(GP, V0, global_offset)),code_push_reg_on_stack(V0));
+}
+
 //TODO:
 
 /*Below there are some functions that need to be writen on their enterety, have something that needs to be changed, or simply need
@@ -279,156 +429,8 @@ extern code_seq gen_code_ident(ident_t id)
     return code_seq_concat(ret, code_push_reg_on_stack(V0, typ));
 }
 
-// End of TODO
-
-// Generate code for the var_decls_t vds to out
-extern code_seq gen_code_var_decls(var_decls_t vds)
-{
-    code_seq ret = code_seq_empty();
-    var_decl_t *vdp = vds.var_decls;
-    while (vdp != NULL) {
-	// generate these in reverse order,
-	// so the addressing offsets work properly
-	ret = code_seq_concat(gen_code_var_decl(*vdp), ret);
-	vdp = vdp->next;
-    }
-    return ret;
-}
-// Generate code for stmt
-extern code_seq gen_code_stmt(stmt_t stmt)
-{
-    switch (stmt.stmt_kind) {
-        case assign_stmt:
-            return gen_code_assign_stmt(stmt.data.assign_stmt);
-            break;
-        case call_stmt:
-            return gen_code_call_stmt(stmt.data.call_stmt);
-            break;
-        case begin_stmt:
-            return gen_code_begin_stmt(stmt.data.begin_stmt);
-            break;
-        case if_stmt:
-            return gen_code_if_stmt(stmt.data.if_stmt);
-            break;
-        case while_stmt:
-            return gen_code_if_stmt(stmt.data.while_stmt);
-            break;
-        case read_stmt:
-            return gen_code_read_stmt(stmt.data.read_stmt);
-            break;
-        case write_stmt:
-            return gen_code_write_stmt(stmt.data.write_stmt);
-            break;
-        case skip_stmt:
-            return gen_code_write_stmt(stmt.data.skip_stmt);
-            break;
-        default:
-            bail_with_error("Call to gen_code_stmt with an AST that is not a statement!");
-            break;
-        }
-    // The following can never execute, but this quiets gcc's warning
-    return code_seq_empty();
-}
-
-// Generate code for the list of statments given by stmts
-extern code_seq gen_code_stmts(stmts_t stmts)
-{
-    code_seq ret = code_seq_empty();
-    stmt_t *sp = stmts.stmts;
-    while (sp != NULL) {
-	ret = code_seq_concat(ret, gen_code_stmt(*sp));
-	sp = sp->next;
-    }
-    return ret;
-}
-
-// Generate code for the if-statment given by stmt
-extern code_seq gen_code_if_stmt(if_stmt_t stmt)
-{
-    // put truth value of stmt.expr in $v0
-    code_seq ret = gen_code_expr(stmt.expr);
-    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
-    code_seq cbody = gen_code_stmt(*(stmt.body));
-    int cbody_len = code_seq_size(cbody);
-    // skip over body if $v0 contains false
-    ret = code_seq_add_to_end(ret,code_beq(V0, 0, cbody_len));
-    return code_seq_concat(ret, cbody);
-}
 
 
-// Generate code for the read statment given by stmt
-extern code_seq gen_code_read_stmt(read_stmt_t stmt)
-{
-    // put number read into $v0
-    code_seq ret = code_seq_singleton(code_rch());
-    // put frame pointer from the lexical address of the name
-    // (using stmt.idu) into $t9
-    assert(stmt.idu != NULL);
-    ret = code_seq_concat(ret,code_compute_fp(T9, stmt.idu->levelsOutward));
-    assert(id_use_get_attrs(stmt.idu) != NULL);
-    unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
-    assert(offset_count <= USHRT_MAX);
-    ret = code_seq_add_to_end(ret,code_seq_singleton(code_fsw(T9, V0, offset_count)));
-    return ret;
-}
-code_seq gen_code_write_stmt(write_stmt_t stmt)
-{
-    // put the result into $a0 to get ready for PCH
-    code_seq ret = gen_code_expr(stmt.expr);
-    ret = code_seq_concat(ret, code_pop_stack_into_reg(A0));
-    ret = code_seq_add_to_end(ret, code_pint());// change to code_pint()
-    return ret;
-}
 
-// Generate code for the expression exp
-extern code_seq gen_code_binary_op_expr(binary_op_expr_t exp)
-{
-    // put the values of the two subexpressions on the stack
-    code_seq ret = gen_code_expr(*(exp.expr1));
-    ret = code_seq_concat(ret, gen_code_expr(*(exp.expr2)));
-    // check the types match
-    type_exp_e t1 = ast_expr_type(*(exp.expr1));
-    assert(ast_expr_type(*(exp.expr2)) == t1);
-    // do the operation, putting the result on the stack
-    ret = code_seq_concat(ret, gen_code_op(exp.arith_op, t1));
-}
-
-// Generate code to apply arith_op to the
-extern code_seq gen_code_arith_op(token_t arith_op)
-{
-    // load top of the stack (the second operand) into AT
-    code_seq ret = code_pop_stack_into_reg(AT);
-    // load next element of the stack into V0
-    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
-
-    code_seq do_op = code_seq_empty();
-    switch (arith_op.code) {
-    case plussym:
-	do_op = code_seq_add_to_end(do_op, code_fadd(V0, AT, V0));
-	break;
-    case minussym:
-	do_op = code_seq_add_to_end(do_op, code_fsub(V0, AT, V0));
-	break;
-    case multsym:
-	do_op = code_seq_add_to_end(do_op, code_fmul(V0, AT, V0));
-	break;
-    case divsym:
-	do_op = code_seq_add_to_end(do_op, code_fdiv(V0, AT, V0));
-	break;
-    default:
-	bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op",
-			arith_op.code);
-	break;
-    }
-    do_op = code_seq_concat(do_op, code_push_reg_on_stack(V0));
-    return code_seq_concat(ret, do_op);
-}
-
-// Generate code to put the given number on top of the stack
-extern code_seq gen_code_number(number_t num)
-{
-    unsigned int global_offset	= literal_table_lookup(num.text, num.value);
-    return code_seq_concat(code_seq_singleton(code_flw(GP, V0, global_offset)),code_push_reg_on_stack(V0));
-}
 
 
