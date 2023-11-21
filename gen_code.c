@@ -18,10 +18,10 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     // there is no static link for the program as a whole,
     // so nothing to do for saving FP into A0 as would be done for a block
     main_cs = code_seq_concat(main_cs, code_save_registers_for_AR());
-    main_cs= code_seq_concat(main_cs,gen_code_stmt(prog.stmt));
-    main_cs = code_seq_concat(main_cs,code_restore_registers_from_AR());
-    main_cs = code_seq_concat(main_cs,code_deallocate_stack_space(vars_len_in_bytes));
-    main_cs= code_seq_add_to_end(main_cs, code_exit());
+    main_cs = code_seq_concat(main_cs, gen_code_stmt(prog.stmt));
+    main_cs = code_seq_concat(main_cs, code_restore_registers_from_AR());
+    main_cs = code_seq_concat(main_cs, code_deallocate_stack_space(vars_len_in_bytes));
+    main_cs = code_seq_add_to_end(main_cs, code_exit());
     gen_code_output_program(bf, main_cs);
 }
 
@@ -30,46 +30,48 @@ extern code_seq gen_code_var_decls(var_decls_t vds)
 {
     code_seq ret = code_seq_empty();
     var_decl_t *vdp = vds.var_decls;
-    while (vdp != NULL) {
-	// generate these in reverse order,
-	// so the addressing offsets work properly
-	ret = code_seq_concat(gen_code_var_decl(*vdp), ret);
-	vdp = vdp->next;
+    while (vdp != NULL)
+    {
+        // generate these in reverse order,
+        // so the addressing offsets work properly
+        ret = code_seq_concat(gen_code_var_decl(*vdp), ret);
+        vdp = vdp->next;
     }
     return ret;
 }
 // Generate code for stmt
 extern code_seq gen_code_stmt(stmt_t stmt)
 {
-    switch (stmt.stmt_kind) {
-        case assign_stmt:
-            return gen_code_assign_stmt(stmt.data.assign_stmt);
-            break;
-        case call_stmt:
-            return gen_code_call_stmt(stmt.data.call_stmt);
-            break;
-        case begin_stmt:
-            return gen_code_begin_stmt(stmt.data.begin_stmt);
-            break;
-        case if_stmt:
-            return gen_code_if_stmt(stmt.data.if_stmt);
-            break;
-        case while_stmt:
-            return gen_code_if_stmt(stmt.data.while_stmt);
-            break;
-        case read_stmt:
-            return gen_code_read_stmt(stmt.data.read_stmt);
-            break;
-        case write_stmt:
-            return gen_code_write_stmt(stmt.data.write_stmt);
-            break;
-        case skip_stmt:
-            return gen_code_write_stmt(stmt.data.skip_stmt);
-            break;
-        default:
-            bail_with_error("Call to gen_code_stmt with an AST that is not a statement!");
-            break;
-        }
+    switch (stmt.stmt_kind)
+    {
+    case assign_stmt:
+        return gen_code_assign_stmt(stmt.data.assign_stmt);
+        break;
+    case call_stmt:
+        return gen_code_call_stmt(stmt.data.call_stmt);
+        break;
+    case begin_stmt:
+        return gen_code_begin_stmt(stmt.data.begin_stmt);
+        break;
+    case if_stmt:
+        return gen_code_if_stmt(stmt.data.if_stmt);
+        break;
+    case while_stmt:
+        return gen_code_while_stmt(stmt.data.while_stmt);
+        break;
+    case read_stmt:
+        return gen_code_read_stmt(stmt.data.read_stmt);
+        break;
+    case write_stmt:
+        return gen_code_write_stmt(stmt.data.write_stmt);
+        break;
+    case skip_stmt:
+        return gen_code_skip_stmt(stmt.data.skip_stmt);
+        break;
+    default:
+        bail_with_error("Call to gen_code_stmt with an AST that is not a statement!");
+        break;
+    }
     // The following can never execute, but this quiets gcc's warning
     return code_seq_empty();
 }
@@ -79,9 +81,10 @@ extern code_seq gen_code_stmts(stmts_t stmts)
 {
     code_seq ret = code_seq_empty();
     stmt_t *sp = stmts.stmts;
-    while (sp != NULL) {
-	ret = code_seq_concat(ret, gen_code_stmt(*sp));
-	sp = sp->next;
+    while (sp != NULL)
+    {
+        ret = code_seq_concat(ret, gen_code_stmt(*sp));
+        sp = sp->next;
     }
     return ret;
 }
@@ -92,13 +95,12 @@ extern code_seq gen_code_if_stmt(if_stmt_t stmt)
     // put truth value of stmt.expr in $v0
     code_seq ret = gen_code_expr(stmt.expr);
     ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
-    code_seq cbody = gen_code_stmt(*(stmt.body));
+    code_seq cbody = gen_code_stmt(*(stmt.then_stmt));
     int cbody_len = code_seq_size(cbody);
     // skip over body if $v0 contains false
-    ret = code_seq_add_to_end(ret,code_beq(V0, 0, cbody_len));
+    ret = code_seq_add_to_end(ret, code_beq(V0, 0, cbody_len));
     return code_seq_concat(ret, cbody);
 }
-
 
 // Generate code for the read statment given by stmt
 extern code_seq gen_code_read_stmt(read_stmt_t stmt)
@@ -108,11 +110,12 @@ extern code_seq gen_code_read_stmt(read_stmt_t stmt)
     // put frame pointer from the lexical address of the name
     // (using stmt.idu) into $t9
     assert(stmt.idu != NULL);
-    ret = code_seq_concat(ret,code_compute_fp(T9, stmt.idu->levelsOutward));
+
+    ret = code_seq_concat(ret, code_compute_fp(T9, stmt.idu->levelsOutward));
     assert(id_use_get_attrs(stmt.idu) != NULL);
     unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
     assert(offset_count <= USHRT_MAX);
-    ret = code_seq_add_to_end(ret,code_seq_singleton(code_fsw(T9, V0, offset_count)));
+    ret = code_seq_add_to_end(ret, code_seq_singleton(code_fsw(T9, V0, offset_count)));
     return ret;
 }
 code_seq gen_code_write_stmt(write_stmt_t stmt)
@@ -120,7 +123,7 @@ code_seq gen_code_write_stmt(write_stmt_t stmt)
     // put the result into $a0 to get ready for PCH
     code_seq ret = gen_code_expr(stmt.expr);
     ret = code_seq_concat(ret, code_pop_stack_into_reg(A0));
-    ret = code_seq_add_to_end(ret, code_pint());// change to code_pint()
+    ret = code_seq_add_to_end(ret, code_pint()); // change to code_pint()
     return ret;
 }
 
@@ -146,23 +149,24 @@ extern code_seq gen_code_arith_op(token_t arith_op)
     ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
 
     code_seq do_op = code_seq_empty();
-    switch (arith_op.code) {
+    switch (arith_op.code)
+    {
     case plussym:
-	do_op = code_seq_add_to_end(do_op, code_fadd(V0, AT, V0));
-	break;
+        do_op = code_seq_add_to_end(do_op, code_fadd(V0, AT, V0));
+        break;
     case minussym:
-	do_op = code_seq_add_to_end(do_op, code_fsub(V0, AT, V0));
-	break;
+        do_op = code_seq_add_to_end(do_op, code_fsub(V0, AT, V0));
+        break;
     case multsym:
-	do_op = code_seq_add_to_end(do_op, code_fmul(V0, AT, V0));
-	break;
+        do_op = code_seq_add_to_end(do_op, code_fmul(V0, AT, V0));
+        break;
     case divsym:
-	do_op = code_seq_add_to_end(do_op, code_fdiv(V0, AT, V0));
-	break;
+        do_op = code_seq_add_to_end(do_op, code_fdiv(V0, AT, V0));
+        break;
     default:
-	bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op",
-			arith_op.code);
-	break;
+        bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op",
+                        arith_op.code);
+        break;
     }
     do_op = code_seq_concat(do_op, code_push_reg_on_stack(V0));
     return code_seq_concat(ret, do_op);
@@ -171,11 +175,11 @@ extern code_seq gen_code_arith_op(token_t arith_op)
 // Generate code to put the given number on top of the stack
 extern code_seq gen_code_number(number_t num)
 {
-    unsigned int global_offset	= literal_table_lookup(num.text, num.value);
-    return code_seq_concat(code_seq_singleton(code_flw(GP, V0, global_offset)),code_push_reg_on_stack(V0));
+    unsigned int global_offset = literal_table_lookup(num.text, num.value);
+    return code_seq_concat(code_seq_singleton(code_flw(GP, V0, global_offset)), code_push_reg_on_stack(V0));
 }
 
-//TODO:
+// TODO:
 
 /*Below there are some functions that need to be writen on their enterety, have something that needs to be changed, or simply need
 to be conferred with team to decide on whether a certain change should be made.
@@ -186,21 +190,21 @@ the implementation of the literal_table .
  */
 
 // Generate code for the given AST
-extern code_seq gen_code_block(block_t blk); 
+extern code_seq gen_code_block(block_t blk);
 // Generate code for the const-decls, cds
-extern code_seq gen_code_const_decls(const_decls_t cds); 
+extern code_seq gen_code_const_decls(const_decls_t cds);
 // Generate code for the const-decl, cd
-extern code_seq gen_code_const_decl(const_decl_t cd); 
+extern code_seq gen_code_const_decl(const_decl_t cd);
 // Generate code for the const-defs, cdfs
-extern code_seq gen_code_const_defs(const_defs_t cdfs); 
+extern code_seq gen_code_const_defs(const_defs_t cdfs);
 // Generate code for the const-def, cdf
-extern code_seq gen_code_const_def(const_def_t cdf); 
+extern code_seq gen_code_const_def(const_def_t cdf);
 
 // Generate code for a single <var-decl>, vd,
 // var_decl_t does not have a "type" attribute.
 code_seq gen_code_var_decl(var_decl_t vd)
 {
-   return gen_code_idents(vd.idents, vd.type);  
+    return gen_code_idents(vd.idents, vd.type);
 }
 
 // Generate code for the identififers in idents
@@ -208,33 +212,34 @@ code_seq gen_code_var_decl(var_decl_t vd)
 // current ast. ) Wondering if we use something like the "(id_use_get_attrs(stmt.idu)->type)"
 // which was used in the gen_code_assign_stmt function below.
 // In addition, "float_te" was deketed when it came up during lab, so I'm unsure as to whether the
-// entire switch statement should be removed. 
+// entire switch statement should be removed.
 extern code_seq gen_code_idents(idents_t idents)
 {
     code_seq ret = code_seq_empty();
     ident_t *idp = idents.idents;
-    while (idp != NULL) {
-	code_seq alloc_and_init = code_seq_singleton(code_addi(SP, SP,- BYTES_PER_WORD));
-	// switch (vt) {
-	// case float_te:
-	//     alloc_and_init
-	// 	= code_seq_add_to_end(alloc_and_init,
-	// 			      code_fsw(SP, 0, 0));
-	//     break;
-	// case bool_te:
-	//     alloc_and_init
-	// 	= code_seq_add_to_end(alloc_and_init,
-	// 			      code_sw(SP, 0, 0));
-	//     break;
-	// default:
-	//     bail_with_error("Bad type_exp_e (%d) passed to gen_code_idents!",
-	// 		    vt);
-	//     break;
-	// }
-	// Generate these in revese order,
-	// so addressing works propertly
-	ret = code_seq_concat(alloc_and_init, ret);
-	idp = idp->next;
+    while (idp != NULL)
+    {
+        code_seq alloc_and_init = code_seq_singleton(code_addi(SP, SP, -BYTES_PER_WORD));
+        // switch (vt) {
+        // case float_te:
+        //     alloc_and_init
+        // 	= code_seq_add_to_end(alloc_and_init,
+        // 			      code_fsw(SP, 0, 0));
+        //     break;
+        // case bool_te:
+        //     alloc_and_init
+        // 	= code_seq_add_to_end(alloc_and_init,
+        // 			      code_sw(SP, 0, 0));
+        //     break;
+        // default:
+        //     bail_with_error("Bad type_exp_e (%d) passed to gen_code_idents!",
+        // 		    vt);
+        //     break;
+        // }
+        // Generate these in revese order,
+        // so addressing works propertly
+        ret = code_seq_concat(alloc_and_init, ret);
+        idp = idp->next;
     }
     return ret;
 }
@@ -252,22 +257,23 @@ extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
     ret = code_seq_concat(ret, code_pop_stack_into_reg(V0, typ));
     // put frame pointer from the lexical address of the name
     // (using stmt.idu) into $t9
-    ret = code_seq_concat(ret,code_compute_fp(T9, stmt.idu->levelsOutward));
+    ret = code_seq_concat(ret, code_compute_fp(T9, stmt.idu->levelsOutward));
     unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
-    assert(offset_count <= USHRT_MAX); 
-    switch (id_use_get_attrs(stmt.idu)->type) {
-    
-	 	case float_te:
-			ret = code_seq_add_to_end(ret,code_fsw(T9, V0, offset_count));
-			break;
-    	case bool_te:
-			ret = code_seq_add_to_end(ret,code_sw(T9, V0, offset_count));
-			break;
-    	default:
-			bail_with_error("Bad var_type (%d) for ident in assignment stmt!",
-			id_use_get_attrs(stmt.idu)->type);
-		break;
-    	}
+    assert(offset_count <= USHRT_MAX);
+    switch (id_use_get_attrs(stmt.idu)->type)
+    {
+
+    case float_te:
+        ret = code_seq_add_to_end(ret, code_fsw(T9, V0, offset_count));
+        break;
+    case bool_te:
+        ret = code_seq_add_to_end(ret, code_sw(T9, V0, offset_count));
+        break;
+    default:
+        bail_with_error("Bad var_type (%d) for ident in assignment stmt!",
+                        id_use_get_attrs(stmt.idu)->type);
+        break;
+    }
     return ret;
 }
 
@@ -305,7 +311,7 @@ extern code_seq gen_code_odd_condition(odd_condition_t cond);
 extern code_seq gen_code_rel_op_condition(rel_op_condition_t cond);
 
 // Generate code for the rel_op
-// Float calc. version uses a "typ" argument of type "type_exp_e", in addition to the one in our version.  
+// Float calc. version uses a "typ" argument of type "type_exp_e", in addition to the one in our version.
 // Previously we used "id_attrs typ = id_use_get_attrs(stmt.idu)->type;" to get the this variable,however I'm unsure what to do here.
 extern code_seq gen_code_rel_op(token_t rel_op)
 {
@@ -317,92 +323,112 @@ extern code_seq gen_code_rel_op(token_t rel_op)
     // start out by doing the comparison
     // and skipping the next 2 instructions if it's true
     code_seq do_op = code_seq_empty();
-    switch (rel_op.code) {
+    switch (rel_op.code)
+    {
     case eqsym:
-	if (typ == float_te) {
-	    do_op = code_seq_singleton(code_bfeq(V0, AT, 2));
-	} else {
-	    do_op = code_seq_singleton(code_beq(V0, AT, 2));
-	}
-	break;
+        if (typ == float_te)
+        {
+            do_op = code_seq_singleton(code_bfeq(V0, AT, 2));
+        }
+        else
+        {
+            do_op = code_seq_singleton(code_beq(V0, AT, 2));
+        }
+        break;
     case neqsym:
-	if (typ == float_te) {
-	    do_op = code_seq_singleton(code_bfne(V0, AT, 2));
-	} else {
-	    do_op = code_seq_singleton(code_bne(V0, AT, 2));
-	}
-	break;
+        if (typ == float_te)
+        {
+            do_op = code_seq_singleton(code_bfne(V0, AT, 2));
+        }
+        else
+        {
+            do_op = code_seq_singleton(code_bne(V0, AT, 2));
+        }
+        break;
     case ltsym:
-	if (typ == float_te) {
-	    do_op = code_seq_singleton(code_fsub(V0, AT, V0));
-	    do_op = code_seq_add_to_end(do_op, code_bfltz(V0, 2));
-	} else {
-	    do_op = code_seq_singleton(code_sub(V0, AT, V0));
-	    do_op = code_seq_add_to_end(do_op, code_bltz(V0, 2));
-	}
-	break;
+        if (typ == float_te)
+        {
+            do_op = code_seq_singleton(code_fsub(V0, AT, V0));
+            do_op = code_seq_add_to_end(do_op, code_bfltz(V0, 2));
+        }
+        else
+        {
+            do_op = code_seq_singleton(code_sub(V0, AT, V0));
+            do_op = code_seq_add_to_end(do_op, code_bltz(V0, 2));
+        }
+        break;
     case leqsym:
-	if (typ == float_te) {
-	    do_op = code_seq_singleton(code_fsub(V0, AT, V0));
-	    do_op = code_seq_add_to_end(do_op, code_bflez(V0, 2));
-	} else {
-	    do_op = code_seq_singleton(code_sub(V0, AT, V0));
-	    do_op = code_seq_add_to_end(do_op, code_blez(V0, 2));
-	}
-	break;
+        if (typ == float_te)
+        {
+            do_op = code_seq_singleton(code_fsub(V0, AT, V0));
+            do_op = code_seq_add_to_end(do_op, code_bflez(V0, 2));
+        }
+        else
+        {
+            do_op = code_seq_singleton(code_sub(V0, AT, V0));
+            do_op = code_seq_add_to_end(do_op, code_blez(V0, 2));
+        }
+        break;
     case gtsym:
-	if (typ == float_te) {
-	    do_op = code_seq_singleton(code_fsub(V0, AT, V0));
-	    do_op = code_seq_add_to_end(do_op, code_bfgtz(V0, 2));
-	} else {
-	    do_op = code_seq_singleton(code_sub(V0, AT, V0));
-	    do_op = code_seq_add_to_end(do_op, code_bgtz(V0, 2));
-	}
-	break;
+        if (typ == float_te)
+        {
+            do_op = code_seq_singleton(code_fsub(V0, AT, V0));
+            do_op = code_seq_add_to_end(do_op, code_bfgtz(V0, 2));
+        }
+        else
+        {
+            do_op = code_seq_singleton(code_sub(V0, AT, V0));
+            do_op = code_seq_add_to_end(do_op, code_bgtz(V0, 2));
+        }
+        break;
     case geqsym:
-	if (typ == float_te) {
-	    do_op = code_seq_singleton(code_fsub(V0, AT, V0));
-	    do_op = code_seq_add_to_end(do_op, code_bfgez(V0, 2));
-	} else {
-	    do_op = code_seq_singleton(code_sub(V0, AT, V0));
-	    do_op = code_seq_add_to_end(do_op, code_bgez(V0, 2));
-	}
-	break;
+        if (typ == float_te)
+        {
+            do_op = code_seq_singleton(code_fsub(V0, AT, V0));
+            do_op = code_seq_add_to_end(do_op, code_bfgez(V0, 2));
+        }
+        else
+        {
+            do_op = code_seq_singleton(code_sub(V0, AT, V0));
+            do_op = code_seq_add_to_end(do_op, code_bgez(V0, 2));
+        }
+        break;
     default:
-	bail_with_error("Unknown token code (%d) in gen_code_rel_op",
-			rel_op.code);
-	break;
+        bail_with_error("Unknown token code (%d) in gen_code_rel_op",
+                        rel_op.code);
+        break;
     }
     ret = code_seq_concat(ret, do_op);
     // rest of the code for the comparisons
-    ret = code_seq_add_to_end(ret, code_add(0, 0, AT)); // put false in AT
-    ret = code_seq_add_to_end(ret, code_beq(0, 0, 1)); // skip next instr
+    ret = code_seq_add_to_end(ret, code_add(0, 0, AT));  // put false in AT
+    ret = code_seq_add_to_end(ret, code_beq(0, 0, 1));   // skip next instr
     ret = code_seq_add_to_end(ret, code_addi(0, AT, 1)); // put true in AT
     ret = code_seq_concat(ret, code_push_reg_on_stack(AT, bool_te));
     return ret;
 }
 
 // Generate code for the expression exp
-// There is no of type "expr_logical_not" in the AST (from what I can tell); thinking of removing but need confer with team. 
+// There is no of type "expr_logical_not" in the AST (from what I can tell); thinking of removing but need confer with team.
 extern code_seq gen_code_expr(expr_t exp)
 {
-    switch (exp.expr_kind) {
+    switch (exp.expr_kind)
+    {
     case expr_bin:
-	return gen_code_binary_op_expr(exp.data.binary);
-	break;
+        return gen_code_binary_op_expr(exp.data.binary);
+        break;
     case expr_ident:
-	return gen_code_ident(exp.data.ident);
-	break;
+        return gen_code_ident(exp.data.ident);
+        break;
     case expr_number:
-	return gen_code_number(exp.data.number);
-	break;
+        return gen_code_number(exp.data.number);
+        break;
     case expr_logical_not:
-	return gen_code_logical_not_expr(*(exp.data.logical_not));
-	break;
+        return gen_code_logical_not_expr(*(exp.data.logical_not));
+        break;
     default:
-	bail_with_error("Unexpected expr_kind_e (%d) in gen_code_expr",
-			exp.expr_kind);
-	break;
+        bail_with_error("Unexpected expr_kind_e (%d) in gen_code_expr",
+                        exp.expr_kind);
+        break;
     }
     // never happens, but suppresses a warning from gcc
     return code_seq_empty();
@@ -417,20 +443,17 @@ extern code_seq gen_code_ident(ident_t id)
     code_seq ret = code_compute_fp(T9, id.idu->levelsOutward);
     assert(id_use_get_attrs(id.idu) != NULL);
     unsigned int offset_count = id_use_get_attrs(id.idu)->offset_count;
-    assert(offset_count <= USHRT_MAX);  
+    assert(offset_count <= USHRT_MAX);
     id_attrs typ = id_use_get_attrs(id.idu)->type;
-    if (typ == float_te) {
-	ret = code_seq_add_to_end(ret,
-				  code_flw(T9, V0, offset_count));
-    } else {
-	ret = code_seq_add_to_end(ret,
-				  code_lw(T9, V0, offset_count));
+    if (typ == float_te)
+    {
+        ret = code_seq_add_to_end(ret,
+                                  code_flw(T9, V0, offset_count));
+    }
+    else
+    {
+        ret = code_seq_add_to_end(ret,
+                                  code_lw(T9, V0, offset_count));
     }
     return code_seq_concat(ret, code_push_reg_on_stack(V0, typ));
 }
-
-
-
-
-
-

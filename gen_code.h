@@ -4,9 +4,11 @@
 #include <stdio.h>
 #include "ast.h"
 #include "bof.h"
+#include "id_use.h"
 #include "instruction.h"
+#include "literal_table.h"
+#include "regname.h"
 #include "code.h"
-
 
 // Initialize the code generator
 extern void gen_code_initialize();
