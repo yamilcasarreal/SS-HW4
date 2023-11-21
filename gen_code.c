@@ -123,7 +123,7 @@ code_seq gen_code_write_stmt(write_stmt_t stmt)
     // put the result into $a0 to get ready for PCH
     code_seq ret = gen_code_expr(stmt.expr);
     ret = code_seq_concat(ret, code_pop_stack_into_reg(A0));
-    ret = code_seq_add_to_end(ret, code_pint()); // change to code_pint()
+    ret = code_seq_add_to_end(ret, code_pint());
     return ret;
 }
 
@@ -164,8 +164,7 @@ extern code_seq gen_code_arith_op(token_t arith_op)
         do_op = code_seq_add_to_end(do_op, code_fdiv(V0, AT, V0));
         break;
     default:
-        bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op",
-                        arith_op.code);
+        bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op",arith_op.code);
         break;
     }
     do_op = code_seq_concat(do_op, code_push_reg_on_stack(V0));
@@ -270,8 +269,7 @@ extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
         ret = code_seq_add_to_end(ret, code_sw(T9, V0, offset_count));
         break;
     default:
-        bail_with_error("Bad var_type (%d) for ident in assignment stmt!",
-                        id_use_get_attrs(stmt.idu)->type);
+        bail_with_error("Bad var_type (%d) for ident in assignment stmt!",id_use_get_attrs(stmt.idu)->type);
         break;
     }
     return ret;
@@ -394,8 +392,7 @@ extern code_seq gen_code_rel_op(token_t rel_op)
         }
         break;
     default:
-        bail_with_error("Unknown token code (%d) in gen_code_rel_op",
-                        rel_op.code);
+        bail_with_error("Unknown token code (%d) in gen_code_rel_op",rel_op.code);
         break;
     }
     ret = code_seq_concat(ret, do_op);
@@ -426,8 +423,7 @@ extern code_seq gen_code_expr(expr_t exp)
         return gen_code_logical_not_expr(*(exp.data.logical_not));
         break;
     default:
-        bail_with_error("Unexpected expr_kind_e (%d) in gen_code_expr",
-                        exp.expr_kind);
+        bail_with_error("Unexpected expr_kind_e (%d) in gen_code_expr",exp.expr_kind);
         break;
     }
     // never happens, but suppresses a warning from gcc
