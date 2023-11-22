@@ -22,7 +22,7 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     main_cs = code_seq_concat(main_cs, code_restore_registers_from_AR());
     main_cs = code_seq_concat(main_cs, code_deallocate_stack_space(vars_len_in_bytes));
     main_cs = code_seq_add_to_end(main_cs, code_exit());
-    gen_code_output_program(bf, main_cs);
+    // gen_code_output_program(bf, main_cs);
 }
 
 // Generate code for the var_decls_t vds to out
@@ -115,7 +115,7 @@ extern code_seq gen_code_read_stmt(read_stmt_t stmt)
     assert(id_use_get_attrs(stmt.idu) != NULL);
     unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
     assert(offset_count <= USHRT_MAX);
-    ret = code_seq_add_to_end(ret, code_seq_singleton(code_fsw(T9, V0, offset_count)));
+    ret = code_seq_add_to_end(ret, code_seq_singleton(code_sw(T9, V0, offset_count)));
     return ret;
 }
 code_seq gen_code_write_stmt(write_stmt_t stmt)
@@ -153,16 +153,16 @@ extern code_seq gen_code_arith_op(token_t arith_op)
     switch (arith_op.code)
     {
     case plussym:
-        do_op = code_seq_add_to_end(do_op, code_fadd(V0, AT, V0));
+        do_op = code_seq_add_to_end(do_op, code_add(V0, AT, V0));
         break;
     case minussym:
-        do_op = code_seq_add_to_end(do_op, code_fsub(V0, AT, V0));
+        do_op = code_seq_add_to_end(do_op, code_sub(V0, AT, V0));
         break;
     case multsym:
-        do_op = code_seq_add_to_end(do_op, code_fmul(V0, AT, V0));
+        do_op = code_seq_add_to_end(do_op, code_mul(V0, AT));
         break;
     case divsym:
-        do_op = code_seq_add_to_end(do_op, code_fdiv(V0, AT, V0));
+        do_op = code_seq_add_to_end(do_op, code_div(V0, AT));
         break;
     default:
         bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op", arith_op.code);
@@ -176,7 +176,7 @@ extern code_seq gen_code_arith_op(token_t arith_op)
 extern code_seq gen_code_number(number_t num)
 {
     unsigned int global_offset = literal_table_lookup(num.text, num.value);
-    return code_seq_concat(code_seq_singleton(code_flw(GP, V0, global_offset)), code_push_reg_on_stack(V0));
+    return code_seq_concat(code_seq_singleton(code_lw(GP, V0, global_offset)), code_push_reg_on_stack(V0));
 }
 
 // TODO:
