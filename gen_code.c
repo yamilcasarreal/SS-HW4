@@ -134,10 +134,11 @@ extern code_seq gen_code_binary_op_expr(binary_op_expr_t exp)
     code_seq ret = gen_code_expr(*(exp.expr1));
     ret = code_seq_concat(ret, gen_code_expr(*(exp.expr2)));
     // check the types match
-    type_exp_e t1 = ast_expr_type(*(exp.expr1));
-    assert(ast_expr_type(*(exp.expr2)) == t1);
+    // type_exp_e t1 = ast_expr_type(*(exp.expr1));
+    // assert(ast_expr_type(*(exp.expr2)) == t1);
     // do the operation, putting the result on the stack
-    ret = code_seq_concat(ret, gen_code_op(exp.arith_op, t1));
+    // ret = code_seq_concat(ret, gen_code_op(exp.arith_op, t1));
+    return ret;
 }
 
 // Generate code to apply arith_op to the
@@ -164,7 +165,7 @@ extern code_seq gen_code_arith_op(token_t arith_op)
         do_op = code_seq_add_to_end(do_op, code_fdiv(V0, AT, V0));
         break;
     default:
-        bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op",arith_op.code);
+        bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op", arith_op.code);
         break;
     }
     do_op = code_seq_concat(do_op, code_push_reg_on_stack(V0));
@@ -203,7 +204,7 @@ extern code_seq gen_code_const_def(const_def_t cdf);
 // var_decl_t does not have a "type" attribute.
 code_seq gen_code_var_decl(var_decl_t vd)
 {
-    return gen_code_idents(vd.idents, vd.type);
+    return gen_code_idents(vd.idents);
 }
 
 // Generate code for the identififers in idents
@@ -252,26 +253,26 @@ extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
     ret = gen_code_expr(*(stmt.expr));
     assert(stmt.idu != NULL);
     assert(id_use_get_attrs(stmt.idu) != NULL);
-    id_attrs typ = id_use_get_attrs(stmt.idu)->type;
-    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0, typ));
+    // id_attrs typ = id_use_get_attrs(stmt.idu)->type;
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
     // put frame pointer from the lexical address of the name
     // (using stmt.idu) into $t9
     ret = code_seq_concat(ret, code_compute_fp(T9, stmt.idu->levelsOutward));
     unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
     assert(offset_count <= USHRT_MAX);
-    switch (id_use_get_attrs(stmt.idu)->type)
-    {
+    // switch (id_use_get_attrs(stmt.idu)->kind)
+    // {
 
-    case float_te:
-        ret = code_seq_add_to_end(ret, code_fsw(T9, V0, offset_count));
-        break;
-    case bool_te:
-        ret = code_seq_add_to_end(ret, code_sw(T9, V0, offset_count));
-        break;
-    default:
-        bail_with_error("Bad var_type (%d) for ident in assignment stmt!",id_use_get_attrs(stmt.idu)->type);
-        break;
-    }
+    // case float_te:
+    //     ret = code_seq_add_to_end(ret, code_fsw(T9, V0, offset_count));
+    //     break;
+    // case bool_te:
+    //     ret = code_seq_add_to_end(ret, code_sw(T9, V0, offset_count));
+    //     break;
+    // default:
+    //     bail_with_error("Bad var_type (%d) for ident in assignment stmt!", id_use_get_attrs(stmt.idu)->type);
+    //     break;
+    // }
     return ret;
 }
 
@@ -290,7 +291,7 @@ extern code_seq gen_code_begin_stmt(begin_stmt_t stmt)
 {
     code_seq ret;
     // allocate space and initialize any variables in block
-    ret = gen_code_var_decls(stmt.var_decls);
+    ret = gen_code_stmts(stmt.stmts);
     int vars_len_in_bytes = (code_seq_size(ret) / 2) * BYTES_PER_WORD;
     // in FLOAT, surrounding scope's base is FP, so that is the static link
     ret = code_seq_add_to_end(ret, code_add(0, FP, A0));
@@ -314,85 +315,40 @@ extern code_seq gen_code_rel_op_condition(rel_op_condition_t cond);
 extern code_seq gen_code_rel_op(token_t rel_op)
 {
     // load top of the stack (the second operand) into AT
-    code_seq ret = code_pop_stack_into_reg(AT, typ);
+    code_seq ret = code_pop_stack_into_reg(AT);
     // load next element of the stack into V0
-    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0, typ));
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
 
     // start out by doing the comparison
     // and skipping the next 2 instructions if it's true
     code_seq do_op = code_seq_empty();
+    // id_attrs typ = id_use_get_attrs(stmt.idu)->kind;
     switch (rel_op.code)
     {
     case eqsym:
-        if (typ == float_te)
-        {
-            do_op = code_seq_singleton(code_bfeq(V0, AT, 2));
-        }
-        else
-        {
-            do_op = code_seq_singleton(code_beq(V0, AT, 2));
-        }
+        do_op = code_seq_singleton(code_beq(V0, AT, 2));
         break;
     case neqsym:
-        if (typ == float_te)
-        {
-            do_op = code_seq_singleton(code_bfne(V0, AT, 2));
-        }
-        else
-        {
-            do_op = code_seq_singleton(code_bne(V0, AT, 2));
-        }
+        do_op = code_seq_singleton(code_bne(V0, AT, 2));
         break;
     case ltsym:
-        if (typ == float_te)
-        {
-            do_op = code_seq_singleton(code_fsub(V0, AT, V0));
-            do_op = code_seq_add_to_end(do_op, code_bfltz(V0, 2));
-        }
-        else
-        {
-            do_op = code_seq_singleton(code_sub(V0, AT, V0));
-            do_op = code_seq_add_to_end(do_op, code_bltz(V0, 2));
-        }
+        do_op = code_seq_singleton(code_sub(V0, AT, V0));
+        do_op = code_seq_add_to_end(do_op, code_bltz(V0, 2));
         break;
     case leqsym:
-        if (typ == float_te)
-        {
-            do_op = code_seq_singleton(code_fsub(V0, AT, V0));
-            do_op = code_seq_add_to_end(do_op, code_bflez(V0, 2));
-        }
-        else
-        {
-            do_op = code_seq_singleton(code_sub(V0, AT, V0));
-            do_op = code_seq_add_to_end(do_op, code_blez(V0, 2));
-        }
+        do_op = code_seq_singleton(code_sub(V0, AT, V0));
+        do_op = code_seq_add_to_end(do_op, code_blez(V0, 2));
         break;
     case gtsym:
-        if (typ == float_te)
-        {
-            do_op = code_seq_singleton(code_fsub(V0, AT, V0));
-            do_op = code_seq_add_to_end(do_op, code_bfgtz(V0, 2));
-        }
-        else
-        {
-            do_op = code_seq_singleton(code_sub(V0, AT, V0));
-            do_op = code_seq_add_to_end(do_op, code_bgtz(V0, 2));
-        }
+        do_op = code_seq_singleton(code_sub(V0, AT, V0));
+        do_op = code_seq_add_to_end(do_op, code_bgtz(V0, 2));
         break;
     case geqsym:
-        if (typ == float_te)
-        {
-            do_op = code_seq_singleton(code_fsub(V0, AT, V0));
-            do_op = code_seq_add_to_end(do_op, code_bfgez(V0, 2));
-        }
-        else
-        {
-            do_op = code_seq_singleton(code_sub(V0, AT, V0));
-            do_op = code_seq_add_to_end(do_op, code_bgez(V0, 2));
-        }
+        do_op = code_seq_singleton(code_sub(V0, AT, V0));
+        do_op = code_seq_add_to_end(do_op, code_bgez(V0, 2));
         break;
     default:
-        bail_with_error("Unknown token code (%d) in gen_code_rel_op",rel_op.code);
+        bail_with_error("Unknown token code (%d) in gen_code_rel_op", rel_op.code);
         break;
     }
     ret = code_seq_concat(ret, do_op);
@@ -400,7 +356,7 @@ extern code_seq gen_code_rel_op(token_t rel_op)
     ret = code_seq_add_to_end(ret, code_add(0, 0, AT));  // put false in AT
     ret = code_seq_add_to_end(ret, code_beq(0, 0, 1));   // skip next instr
     ret = code_seq_add_to_end(ret, code_addi(0, AT, 1)); // put true in AT
-    ret = code_seq_concat(ret, code_push_reg_on_stack(AT, bool_te));
+    ret = code_seq_concat(ret, code_push_reg_on_stack(AT));
     return ret;
 }
 
@@ -419,11 +375,8 @@ extern code_seq gen_code_expr(expr_t exp)
     case expr_number:
         return gen_code_number(exp.data.number);
         break;
-    case expr_logical_not:
-        return gen_code_logical_not_expr(*(exp.data.logical_not));
-        break;
     default:
-        bail_with_error("Unexpected expr_kind_e (%d) in gen_code_expr",exp.expr_kind);
+        bail_with_error("Unexpected expr_kind_e (%d) in gen_code_expr", exp.expr_kind);
         break;
     }
     // never happens, but suppresses a warning from gcc
@@ -440,16 +393,15 @@ extern code_seq gen_code_ident(ident_t id)
     assert(id_use_get_attrs(id.idu) != NULL);
     unsigned int offset_count = id_use_get_attrs(id.idu)->offset_count;
     assert(offset_count <= USHRT_MAX);
-    id_attrs typ = id_use_get_attrs(id.idu)->type;
-    if (typ == float_te)
-    {
-        ret = code_seq_add_to_end(ret,
-                                  code_flw(T9, V0, offset_count));
-    }
-    else
-    {
-        ret = code_seq_add_to_end(ret,
-                                  code_lw(T9, V0, offset_count));
-    }
-    return code_seq_concat(ret, code_push_reg_on_stack(V0, typ));
+    // id_attrs typ = id_use_get_attrs(id.idu)->kind;
+    //  if (typ == float_te)
+    //  {
+    //      ret = code_seq_add_to_end(ret,
+    //                                code_flw(T9, V0, offset_count));
+    //  }
+    //  else
+    //  {
+    ret = code_seq_add_to_end(ret, code_lw(T9, V0, offset_count));
+    //}
+    return code_seq_concat(ret, code_push_reg_on_stack(V0));
 }

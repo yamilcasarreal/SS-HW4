@@ -1,6 +1,7 @@
 {
   "files.associations": {
     "regname.h": "c",
-    "code.h": "c"
+    "code.h": "c",
+    "literal_table.h": "c"
   }
 }

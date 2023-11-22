@@ -1,14 +1,17 @@
 /* $Id: gen_code.h,v 1.10 2023/11/15 06:43:49 leavens Exp $ */
 #ifndef _GEN_CODE_H
 #define _GEN_CODE_H
+#include <limits.h>
 #include <stdio.h>
 #include "ast.h"
 #include "bof.h"
 #include "id_use.h"
 #include "instruction.h"
 #include "literal_table.h"
+#include "utilities.h"
 #include "regname.h"
 #include "code.h"
+#include "pl0.tab.h"
 
 // Initialize the code generator
 extern void gen_code_initialize();
