@@ -20,6 +20,11 @@ extern void gen_code_initialize();
 // Generate code for prog into bf
 extern void gen_code_program(BOFFILE bf, block_t prog);
 
+static void gen_code_output_program(BOFFILE bf, code_seq main_cs);
+
+static void gen_code_output_literals(BOFFILE bf);
+
+static void gen_code_output_seq(BOFFILE bf, code_seq cs);
 // Requires: bf if open for writing in binary
 // Generate code for the given AST
 extern code_seq gen_code_block(block_t blk);

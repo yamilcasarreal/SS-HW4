@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include "gen_code.h"
 
+#define STACK_SPACE 4096
+
 // Initialize the code generator
 void gen_code_initialize()
 {
@@ -22,8 +24,73 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     main_cs = code_seq_concat(main_cs, code_restore_registers_from_AR());
     main_cs = code_seq_concat(main_cs, code_deallocate_stack_space(vars_len_in_bytes));
     main_cs = code_seq_add_to_end(main_cs, code_exit());
-    // gen_code_output_program(bf, main_cs);
+    gen_code_output_program(bf, main_cs);
 }
+
+static BOFHeader gen_code_program_header(code_seq main_cs)
+{
+    BOFHeader ret;
+    strncpy(ret.magic, "FBF", 4); // for FLOAT SRM
+    ret.text_start_address = 0;
+    // remember, the unit of length in the BOF format is a byte!
+    ret.text_length = code_seq_size(main_cs) * BYTES_PER_WORD;
+    int dsa = MAX(ret.text_length, 1024);
+    ret.data_start_address = dsa;
+    // ret.ints_length = 0; // FLOAT has no int literals
+    ret.data_length = literal_table_size() * BYTES_PER_WORD;
+    int sba = dsa + ret.data_start_address + ret.data_length + STACK_SPACE;
+    ret.stack_bottom_addr = sba;
+    return ret;
+}
+
+static void gen_code_output_program(BOFFILE bf, code_seq main_cs)
+{
+    BOFHeader bfh = gen_code_program_header(main_cs);
+    bof_write_header(bf, bfh);
+    gen_code_output_seq(bf, main_cs);
+    gen_code_output_literals(bf);
+    bof_close(bf);
+}
+
+static void gen_code_output_literals(BOFFILE bf)
+{
+    literal_table_start_iteration();
+    while (literal_table_iteration_has_next())
+    {
+        word_type w = literal_table_iteration_next();
+        // debug_print("Writing literal %f to BOF file\n", w);
+        bof_write_word(bf, w);
+    }
+    literal_table_end_iteration(); // not necessary
+}
+
+static void gen_code_output_seq(BOFFILE bf, code_seq cs)
+{
+    while (!code_seq_is_empty(cs))
+    {
+        bin_instr_t inst = code_seq_first(cs)->instr;
+        instruction_write_bin_instr(bf, inst);
+        cs = code_seq_rest(cs);
+    }
+}
+// Requires: bf if open for writing in binary
+// Generate code for prog into bf
+/*void gen_code_program(BOFFILE bf, program_t prog)
+{
+    code_seq main_cs;
+    // We want to make the main program's AR look like all blocks... so:
+    // allocate space and initialize any variables
+    main_cs = gen_code_var_decls(prog.var_decls);
+    int vars_len_in_bytes = (code_seq_size(main_cs) / 2) * BYTES_PER_WORD;
+    // there is no static link for the program as a whole,
+    // so nothing to do for saving FP into A0 as would be done for a block
+    main_cs = code_seq_concat(main_cs, code_save_registers_for_AR());
+    main_cs = code_seq_concat(main_cs, gen_code_stmt(prog.stmt));
+    main_cs = code_seq_concat(main_cs, code_restore_registers_from_AR());
+    main_cs = code_seq_concat(main_cs, code_deallocate_stack_space(vars_len_in_bytes));
+    main_cs = code_seq_add_to_end(main_cs, code_exit());
+    gen_code_output_program(bf, main_cs);
+}*/
 
 // Generate code for the var_decls_t vds to out
 extern code_seq gen_code_var_decls(var_decls_t vds)
@@ -277,13 +344,13 @@ extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
 }
 
 // Generate code for stmt
-extern code_seq gen_code_call_stmt(call_stmt_t stmt);
+extern code_seq gen_code_call_stmt(call_stmt_t stmt) {}
 // Generate code for the if-statment given by stmt
-extern code_seq gen_code_while_stmt(while_stmt_t stmt);
+extern code_seq gen_code_while_stmt(while_stmt_t stmt) {}
 // Generate code for the skip statment, stmt
-extern code_seq gen_code_skip_stmt(skip_stmt_t stmt);
+extern code_seq gen_code_skip_stmt(skip_stmt_t stmt) {}
 // Generate code for the skip statment, stmt
-extern code_seq gen_code_skip_stmt(skip_stmt_t stmt);
+// extern code_seq gen_code_skip_stmt(skip_stmt_t stmt) {}
 
 // Generate code for stmt
 // the "begin_stmt_t" struct. doesn't have a "var_decls" attribute.

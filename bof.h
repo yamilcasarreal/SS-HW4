@@ -8,17 +8,19 @@
 
 #define MAGIC_BUFFER_SIZE 4
 
-typedef struct { // Field magic should be "BOF" (with the null char)
-    char     magic[MAGIC_BUFFER_SIZE];
-    address_type text_start_address;  // byte address to start running (PC)
-    address_type text_length;         // size of the text section in bytes
-    address_type data_start_address;  // byte address of static data (GP)
-    address_type data_length;         // size of data section in bytes
-    address_type stack_bottom_addr;   // byte address of stack "bottom" (FP)
+typedef struct
+{ // Field magic should be "BOF" (with the null char)
+    char magic[MAGIC_BUFFER_SIZE];
+    address_type text_start_address; // byte address to start running (PC)
+    address_type text_length;        // size of the text section in bytes
+    address_type data_start_address; // byte address of static data (GP)
+    address_type data_length;        // size of data section in bytes
+    address_type stack_bottom_addr;  // byte address of stack "bottom" (FP)
 } BOFHeader;
 
 // a type for Binary Output Files
-typedef struct {
+typedef struct
+{
     FILE *fileptr;
     const char *filename;
 } BOFFILE;
@@ -65,7 +67,7 @@ extern void bof_write_word(BOFFILE bf, word_type w);
 // Write the given number of bytes from buf into f.
 // Exit the program with an error if this fails.
 extern void bof_write_bytes(BOFFILE bf, size_t bytes,
-			    const void *buf);
+                            const void *buf);
 
 // Requires: bf is open for writing in binary
 // Write the given header to f
