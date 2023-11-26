@@ -160,13 +160,21 @@ extern code_seq gen_code_stmts(stmts_t stmts)
 extern code_seq gen_code_if_stmt(if_stmt_t stmt)
 {
     // put truth value of stmt.expr in $v0
-    code_seq ret = gen_code_expr(stmt.expr);
+    code_seq ret = gen_code_condition(stmt.condition);
     ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
+
     code_seq cbody = gen_code_stmt(*(stmt.then_stmt));
+    code_seq ebody = gen_code_stmt(*(stmt.else_stmt));
     int cbody_len = code_seq_size(cbody);
+    int ebody_len = code_seq_size(ebody);
+
     // skip over body if $v0 contains false
-    ret = code_seq_add_to_end(ret, code_beq(V0, 0, cbody_len));
-    return code_seq_concat(ret, cbody);
+    ret = code_seq_add_to_end(ret, code_beq(V0, 0, cbody_len + 1));
+    ret = code_seq_add_to_end(ret, code_beq(V0, 0, ebody_len));
+    ret = code_seq_concat(ret, cbody);
+    // ret = code_seq_add_to_end(ret, code_jmp(ebody_len));
+    // ret = code_seq_concat(ret, ebody);
+    return ret;
 }
 
 // Generate code for the read statment given by stmt
@@ -185,6 +193,7 @@ extern code_seq gen_code_read_stmt(read_stmt_t stmt)
     ret = code_seq_add_to_end(ret, code_seq_singleton(code_sw(T9, V0, offset_count)));
     return ret;
 }
+
 code_seq gen_code_write_stmt(write_stmt_t stmt)
 {
     // put the result into $a0 to get ready for PCH
@@ -370,11 +379,34 @@ extern code_seq gen_code_begin_stmt(begin_stmt_t stmt)
 }
 
 // Generate code for cond, putting its truth value
-extern code_seq gen_code_condition(condition_t cond);
+extern code_seq gen_code_condition(condition_t cond){
+    switch (cond.cond_kind)
+    {
+    case ck_odd:
+        return gen_code_odd_condition(cond.data.odd_cond);
+        break;
+    case ck_rel:
+        return gen_code_rel_op_condition(cond.data.rel_op_cond);
+        break;
+    default:
+        bail_with_error("Unexpected expr_kind_e (%d) in gen_code_expr", cond.cond_kind);
+        break;
+    }
+    // never happens, but suppresses a warning from gcc
+    return code_seq_empty();
+}
 // Generate code for cond, putting its truth value
-extern code_seq gen_code_odd_condition(odd_condition_t cond);
+extern code_seq gen_code_odd_condition(odd_condition_t cond){
+    code_seq ret = gen_code_expr(cond.expr);
+    return ret;
+}
 // Generate code for cond, putting its truth value
-extern code_seq gen_code_rel_op_condition(rel_op_condition_t cond);
+extern code_seq gen_code_rel_op_condition(rel_op_condition_t cond){
+    code_seq ret = gen_code_expr(cond.expr1);
+    ret = code_seq_concat(ret, gen_code_rel_op(cond.rel_op));
+    ret = code_seq_concat(ret, gen_code_expr(cond.expr2));
+    return ret;
+}
 
 // Generate code for the rel_op
 // Float calc. version uses a "typ" argument of type "type_exp_e", in addition to the one in our version.
@@ -389,14 +421,17 @@ extern code_seq gen_code_rel_op(token_t rel_op)
     // start out by doing the comparison
     // and skipping the next 2 instructions if it's true
     code_seq do_op = code_seq_empty();
+
     // id_attrs typ = id_use_get_attrs(stmt.idu)->kind;
     switch (rel_op.code)
     {
     case eqsym:
         do_op = code_seq_singleton(code_beq(V0, AT, 2));
+        
         break;
     case neqsym:
         do_op = code_seq_singleton(code_bne(V0, AT, 2));
+        
         break;
     case ltsym:
         do_op = code_seq_singleton(code_sub(V0, AT, V0));
