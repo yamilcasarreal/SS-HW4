@@ -161,6 +161,7 @@ extern code_seq gen_code_if_stmt(if_stmt_t stmt)
 {
     // put truth value of stmt.expr in $v0
     code_seq ret = gen_code_condition(stmt.condition);
+    printf(ret);
     ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
 
     code_seq cbody = gen_code_stmt(*(stmt.then_stmt));
@@ -169,11 +170,11 @@ extern code_seq gen_code_if_stmt(if_stmt_t stmt)
     int ebody_len = code_seq_size(ebody);
 
     // skip over body if $v0 contains false
-    ret = code_seq_add_to_end(ret, code_beq(V0, 0, cbody_len + 1));
-    ret = code_seq_add_to_end(ret, code_beq(V0, 0, ebody_len));
+    ret = code_seq_add_to_end(ret, code_beq(V0, 0, cbody_len + BYTES_PER_WORD));
     ret = code_seq_concat(ret, cbody);
+    // ret = code_seq_add_to_end(ret, code_beq(V0, 0, ebody_len));
     // ret = code_seq_add_to_end(ret, code_jmp(ebody_len));
-    // ret = code_seq_concat(ret, ebody);
+    ret = code_seq_concat(ret, ebody);
     return ret;
 }
 

@@ -32,30 +32,35 @@ a116:	ADDI $sp, $sp, -4
 a120:	SW $sp, $v0, 0	# offset is +0 bytes
 a124:	LW $sp, $v0, 0	# offset is +0 bytes
 a128:	ADDI $sp, $sp, 4
-a132:	BEQ $v0, $0, 7	# offset is +28 bytes
-a136:	BEQ $v0, $0, 6	# offset is +24 bytes
-a140:	LW $gp, $v0, 2	# offset is +8 bytes
-a144:	ADDI $sp, $sp, -4
-a148:	SW $sp, $v0, 0	# offset is +0 bytes
-a152:	LW $sp, $a0, 0	# offset is +0 bytes
-a156:	ADDI $sp, $sp, 4
-a160:	PINT 
-a164:	LW $fp, $ra, -4	# offset is -16 bytes
-a168:	LW $fp, $s0, -5	# offset is -20 bytes
-a172:	LW $fp, $s1, -6	# offset is -24 bytes
-a176:	LW $fp, $s2, -7	# offset is -28 bytes
-a180:	LW $fp, $s3, -8	# offset is -32 bytes
-a184:	LW $fp, $s4, -9	# offset is -36 bytes
-a188:	LW $fp, $s5, -10	# offset is -40 bytes
-a192:	LW $fp, $s6, -11	# offset is -44 bytes
-a196:	LW $fp, $s7, -12	# offset is -48 bytes
-a200:	LW $fp, $sp, -1	# offset is -4 bytes
-a204:	LW $fp, $fp, -2	# offset is -8 bytes
-a208:	ADDI $sp, $sp, 0
-a212:	EXIT 
+a132:	BEQ $v0, $0, 10	# offset is +40 bytes
+a136:	LW $gp, $v0, 2	# offset is +8 bytes
+a140:	ADDI $sp, $sp, -4
+a144:	SW $sp, $v0, 0	# offset is +0 bytes
+a148:	LW $sp, $a0, 0	# offset is +0 bytes
+a152:	ADDI $sp, $sp, 4
+a156:	PINT 
+a160:	LW $gp, $v0, 3	# offset is +12 bytes
+a164:	ADDI $sp, $sp, -4
+a168:	SW $sp, $v0, 0	# offset is +0 bytes
+a172:	LW $sp, $a0, 0	# offset is +0 bytes
+a176:	ADDI $sp, $sp, 4
+a180:	PINT 
+a184:	LW $fp, $ra, -4	# offset is -16 bytes
+a188:	LW $fp, $s0, -5	# offset is -20 bytes
+a192:	LW $fp, $s1, -6	# offset is -24 bytes
+a196:	LW $fp, $s2, -7	# offset is -28 bytes
+a200:	LW $fp, $s3, -8	# offset is -32 bytes
+a204:	LW $fp, $s4, -9	# offset is -36 bytes
+a208:	LW $fp, $s5, -10	# offset is -40 bytes
+a212:	LW $fp, $s6, -11	# offset is -44 bytes
+a216:	LW $fp, $s7, -12	# offset is -48 bytes
+a220:	LW $fp, $sp, -1	# offset is -4 bytes
+a224:	LW $fp, $fp, -2	# offset is -8 bytes
+a228:	ADDI $sp, $sp, 0
+a232:	EXIT 
 .data 1024
-WORD w0 = 3
-WORD w1 = 4
+WORD w0 = 4
+WORD w1 = 3
 WORD w2 = 10
 WORD w3 = 11
 .stack 6160
