@@ -15,7 +15,8 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     code_seq main_cs;
     // We want to make the main program's AR look like all blocks... so:
     // allocate space and initialize any variables
-    main_cs = gen_code_var_decls(prog.var_decls);
+    main_cs = gen_code_const_decls(prog.const_decls);
+    main_cs = code_seq_concat(main_cs, gen_code_var_decls(prog.var_decls));
     int vars_len_in_bytes = (code_seq_size(main_cs) / 2) * BYTES_PER_WORD;
     // there is no static link for the program as a whole,
     // so nothing to do for saving FP into A0 as would be done for a block
@@ -268,13 +269,46 @@ the implementation of the literal_table .
 // Generate code for the given AST
 extern code_seq gen_code_block(block_t blk);
 // Generate code for the const-decls, cds
-extern code_seq gen_code_const_decls(const_decls_t cds);
+extern code_seq gen_code_const_decls(const_decls_t cds)
+{
+    code_seq ret = code_seq_empty();
+    const_decl_t *cdp = cds.const_decls;
+    while (cdp != NULL)
+    {
+        // generate these in reverse order,
+        // so the addressing offsets work properly
+        ret = code_seq_concat(gen_code_const_decl(*cdp), ret);
+        cdp = cdp->next;
+    }
+    return ret;
+}
+
 // Generate code for the const-decl, cd
-extern code_seq gen_code_const_decl(const_decl_t cd);
+extern code_seq gen_code_const_decl(const_decl_t cd)
+{
+    return gen_code_const_defs(cd.const_defs);
+}
+
 // Generate code for the const-defs, cdfs
-extern code_seq gen_code_const_defs(const_defs_t cdfs);
+extern code_seq gen_code_const_defs(const_defs_t cdfs)
+{
+    code_seq ret = code_seq_empty();
+    const_def_t *cdf = cdfs.const_defs;
+    while (cdf != NULL)
+    {
+        // generate these in reverse order,
+        // so the addressing offsets work properly
+        ret = code_seq_concat(gen_code_const_def(*cdf), ret);
+        cdf = cdf->next;
+    }
+    return ret;
+}
 // Generate code for the const-def, cdf
-extern code_seq gen_code_const_def(const_def_t cdf);
+extern code_seq gen_code_const_def(const_def_t cdf){
+    code_seq ret = code_seq_singleton(code_addi(SP, SP, -BYTES_PER_WORD));
+    ret = code_seq_concat(ret, gen_code_number(cdf.number));
+    return ret;
+}
 
 // Generate code for a single <var-decl>, vd,
 // var_decl_t does not have a "type" attribute.
@@ -491,6 +525,7 @@ extern code_seq gen_code_expr(expr_t exp)
 // (which represent the id_kind values in id_attrs.h)
 extern code_seq gen_code_ident(ident_t id)
 {
+
     assert(id.idu != NULL);
     code_seq ret = code_compute_fp(T9, id.idu->levelsOutward);
     assert(id_use_get_attrs(id.idu) != NULL);
