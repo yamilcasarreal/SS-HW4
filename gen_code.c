@@ -298,7 +298,7 @@ extern code_seq gen_code_const_defs(const_defs_t cdfs)
     {
         // generate these in reverse order,
         // so the addressing offsets work properly
-        ret = code_seq_concat(gen_code_const_def(*cdf), ret);
+        ret = code_seq_concat(ret, gen_code_const_def(*cdf));
         cdf = cdf->next;
     }
     return ret;
