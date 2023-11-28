@@ -15,15 +15,21 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     code_seq main_cs;
     // We want to make the main program's AR look like all blocks... so:
     // allocate space and initialize any variables
-    main_cs = gen_code_var_decls(prog.var_decls);
-    main_cs = code_seq_concat(main_cs, gen_code_const_decls(prog.const_decls));
+    code_seq vars = gen_code_var_decls(prog.var_decls);
     int vars_len_in_bytes = (code_seq_size(main_cs) / 2) * BYTES_PER_WORD;
+
+    code_seq constants = gen_code_const_decls(prog.const_decls);
+    int const_len_in_bytes = (code_seq_size(main_cs) / 3) * BYTES_PER_WORD;
+
+    main_cs = code_seq_concat(vars, constants);
+    int total_len_in_bytes = const_len_in_bytes + vars_len_in_bytes;
+
     // there is no static link for the program as a whole,
     // so nothing to do for saving FP into A0 as would be done for a block
     main_cs = code_seq_concat(main_cs, code_save_registers_for_AR());
     main_cs = code_seq_concat(main_cs, gen_code_stmt(prog.stmt));
     main_cs = code_seq_concat(main_cs, code_restore_registers_from_AR());
-    main_cs = code_seq_concat(main_cs, code_deallocate_stack_space(vars_len_in_bytes));
+    main_cs = code_seq_concat(main_cs, code_deallocate_stack_space(total_len_in_bytes));
     main_cs = code_seq_add_to_end(main_cs, code_exit());
     gen_code_output_program(bf, main_cs);
 }
@@ -307,6 +313,7 @@ extern code_seq gen_code_const_decls(const_decls_t cds)
         ret = code_seq_concat(gen_code_const_decl(*cdp), ret);
         cdp = cdp->next;
     }
+    
     return ret;
 }
 
@@ -325,15 +332,19 @@ extern code_seq gen_code_const_defs(const_defs_t cdfs)
     {
         // generate these in reverse order,
         // so the addressing offsets work properly
-        ret = code_seq_concat(ret, gen_code_const_def(*cdf));
+        ret = code_seq_concat(gen_code_const_def(*cdf), ret);
         cdf = cdf->next;
     }
+    // code_seq_debug_print(stdout, ret);
     return ret;
 }
 // Generate code for the const-def, cdf
 extern code_seq gen_code_const_def(const_def_t cdf){
     // code_seq ret = code_seq_singleton(code_addi(SP, SP, -BYTES_PER_WORD));
     code_seq ret = gen_code_number(cdf.number);
+    // code_seq_debug_print(stdout, ret);
+    // printf("\n\n");
+    // printf("number size is %d", code_seq_size(ret) / 2 * BYTES_PER_WORD);
     return ret;
 }
 
