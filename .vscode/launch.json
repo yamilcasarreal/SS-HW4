@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/compiler",
-            "args": ["hw4-gtestL.pl0"],
+            "args": ["hw4-gtestM.pl0"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

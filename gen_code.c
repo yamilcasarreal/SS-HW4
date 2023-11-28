@@ -480,8 +480,24 @@ extern code_seq gen_code_condition(condition_t cond){
 // Generate code for cond, putting its truth value
 extern code_seq gen_code_odd_condition(odd_condition_t cond){
     code_seq ret = gen_code_expr(cond.expr);
+    // code_seq_debug_print(stdout, ret);
+
+    // load top of the stack (the second operand) into AT
+    ret = code_seq_add_to_end(ret, code_addi(0, A0, 2));
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
+    // code_seq_debug_print(stdout, ret);
+
+    // start out by doing the comparison
+    // and skipping the next 2 instructions if it's true
+
+    ret = code_seq_add_to_end(ret, code_div(V0, A0));
+    ret = code_seq_add_to_end(ret, code_mfhi(V0));
+    ret = code_seq_concat(ret, code_push_reg_on_stack(V0));
+    // code_seq_debug_print(stdout, ret);
+        
     return ret;
 }
+
 // Generate code for cond, putting its truth value
 extern code_seq gen_code_rel_op_condition(rel_op_condition_t cond){
     code_seq ret = gen_code_expr(cond.expr1);
