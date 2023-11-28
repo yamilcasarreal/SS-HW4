@@ -41,7 +41,7 @@ static BOFHeader gen_code_program_header(code_seq main_cs)
     ret.text_start_address = 0;
     // remember, the unit of length in the BOF format is a byte!
     ret.text_length = code_seq_size(main_cs) * BYTES_PER_WORD;
-    int dsa = MAX(ret.text_length, 1024);
+    int dsa = MAX(ret.text_length + BYTES_PER_WORD, 1024);
     ret.data_start_address = dsa;
     // ret.ints_length = 0; // FLOAT has no int literals
     ret.data_length = literal_table_size() * BYTES_PER_WORD;

@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/compiler",
-            "args": ["hw4-vmtest6.pl0"],
+            "args": ["hw4-vmtestJ.pl0"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
