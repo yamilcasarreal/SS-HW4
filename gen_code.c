@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "gen_code.h"
 
 #define STACK_SPACE 4096
@@ -16,10 +17,10 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     // We want to make the main program's AR look like all blocks... so:
     // allocate space and initialize any variables
     code_seq vars = gen_code_var_decls(prog.var_decls);
-    int vars_len_in_bytes = (code_seq_size(main_cs) / 2) * BYTES_PER_WORD;
+    int vars_len_in_bytes = (code_seq_size(vars) / 3) * BYTES_PER_WORD;
 
     code_seq constants = gen_code_const_decls(prog.const_decls);
-    int const_len_in_bytes = (code_seq_size(main_cs) / 3) * BYTES_PER_WORD;
+    int const_len_in_bytes = (code_seq_size(constants) / 3) * BYTES_PER_WORD;
 
     main_cs = code_seq_concat(vars, constants);
     int total_len_in_bytes = const_len_in_bytes + vars_len_in_bytes;
@@ -429,7 +430,10 @@ extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
 }
 
 // Generate code for stmt
-extern code_seq gen_code_call_stmt(call_stmt_t stmt) {}
+extern code_seq gen_code_call_stmt(call_stmt_t stmt) {
+    code_seq ret = code_seq_empty();
+    return ret;
+}
 // Generate code for the if-statment given by stmt
 extern code_seq gen_code_while_stmt(while_stmt_t stmt) {
     code_seq ret = gen_code_condition(stmt.condition);
