@@ -81,24 +81,6 @@ static void gen_code_output_seq(BOFFILE bf, code_seq cs)
         cs = code_seq_rest(cs);
     }
 }
-// Requires: bf if open for writing in binary
-// Generate code for prog into bf
-/*void gen_code_program(BOFFILE bf, program_t prog)
-{
-    code_seq main_cs;
-    // We want to make the main program's AR look like all blocks... so:
-    // allocate space and initialize any variables
-    main_cs = gen_code_var_decls(prog.var_decls);
-    int vars_len_in_bytes = (code_seq_size(main_cs) / 2) * BYTES_PER_WORD;
-    // there is no static link for the program as a whole,
-    // so nothing to do for saving FP into A0 as would be done for a block
-    main_cs = code_seq_concat(main_cs, code_save_registers_for_AR());
-    main_cs = code_seq_concat(main_cs, gen_code_stmt(prog.stmt));
-    main_cs = code_seq_concat(main_cs, code_restore_registers_from_AR());
-    main_cs = code_seq_concat(main_cs, code_deallocate_stack_space(vars_len_in_bytes));
-    main_cs = code_seq_add_to_end(main_cs, code_exit());
-    gen_code_output_program(bf, main_cs);
-}*/
 
 // Generate code for the var_decls_t vds to out
 extern code_seq gen_code_var_decls(var_decls_t vds)
@@ -170,7 +152,6 @@ extern code_seq gen_code_if_stmt(if_stmt_t stmt)
 {
     // put truth value of stmt.expr in $v0
     code_seq ret = gen_code_condition(stmt.condition);
-    // printf(ret);
     ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
 
     code_seq cbody = gen_code_stmt(*(stmt.then_stmt));
@@ -245,10 +226,6 @@ extern code_seq gen_code_binary_op_expr(binary_op_expr_t exp)
     // put the values of the two subexpressions on the stack
     code_seq ret = gen_code_expr(*(exp.expr1));
     ret = code_seq_concat(ret, gen_code_expr(*(exp.expr2)));
-    // check the types match
-    // type_exp_e t1 = ast_expr_type(*(exp.expr1));
-    // assert(ast_expr_type(*(exp.expr2)) == t1);
-    // do the operation, putting the result on the stack
     ret = code_seq_concat(ret, gen_code_op(exp.arith_op));
     return ret;
 }
@@ -293,16 +270,6 @@ extern code_seq gen_code_number(number_t num)
     return code_seq_concat(code_seq_singleton(code_lw(GP, V0, global_offset)), code_push_reg_on_stack(V0));
 }
 
-// TODO:
-
-/*Below there are some functions that need to be writen on their enterety, have something that needs to be changed, or simply need
-to be conferred with team to decide on whether a certain change should be made.
-
-Furthermore, the abstract data type "code_seq", which I believe is a linked list, needs to be created; in addition to
-the implementation of the literal_table .
-
- */
-
 // Generate code for the given AST
 extern code_seq gen_code_block(block_t blk);
 // Generate code for the const-decls, cds
@@ -339,16 +306,11 @@ extern code_seq gen_code_const_defs(const_defs_t cdfs)
         ret = code_seq_concat(gen_code_const_def(*cdf), ret);
         cdf = cdf->next;
     }
-    // code_seq_debug_print(stdout, ret);
     return ret;
 }
 // Generate code for the const-def, cdf
 extern code_seq gen_code_const_def(const_def_t cdf){
-    // code_seq ret = code_seq_singleton(code_addi(SP, SP, -BYTES_PER_WORD));
     code_seq ret = gen_code_number(cdf.number);
-    // code_seq_debug_print(stdout, ret);
-    // printf("\n\n");
-    // printf("number size is %d", code_seq_size(ret) / 2 * BYTES_PER_WORD);
     return ret;
 }
 
@@ -372,24 +334,6 @@ extern code_seq gen_code_idents(idents_t idents)
     while (idp != NULL)
     {
         code_seq alloc_and_init = code_seq_singleton(code_addi(SP, SP, -BYTES_PER_WORD));
-        // switch (vt) {
-        // case float_te:
-        //     alloc_and_init
-        // 	= code_seq_add_to_end(alloc_and_init,
-        // 			      code_fsw(SP, 0, 0));
-        //     break;
-        // case bool_te:
-        //     alloc_and_init
-        // 	= code_seq_add_to_end(alloc_and_init,
-        // 			      code_sw(SP, 0, 0));
-        //     break;
-        // default:
-        //     bail_with_error("Bad type_exp_e (%d) passed to gen_code_idents!",
-        // 		    vt);
-        //     break;
-        // }
-        // Generate these in revese order,
-        // so addressing works propertly
         ret = code_seq_concat(alloc_and_init, ret);
         idp = idp->next;
     }
@@ -401,31 +345,14 @@ extern code_seq gen_code_idents(idents_t idents)
 extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
 {
     code_seq ret;
-    // put value of expression in $v0
     ret = gen_code_expr(*(stmt.expr));
     assert(stmt.idu != NULL);
     assert(id_use_get_attrs(stmt.idu) != NULL);
-    // id_attrs typ = id_use_get_attrs(stmt.idu)->type;
     ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
-    // put frame pointer from the lexical address of the name
-    // (using stmt.idu) into $t9
     ret = code_seq_concat(ret, code_compute_fp(T9, stmt.idu->levelsOutward));
     unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
     assert(offset_count <= USHRT_MAX);
     ret = code_seq_add_to_end(ret, code_sw(T9, V0, offset_count));
-    // switch (id_use_get_attrs(stmt.idu)->kind)
-    // {
-
-    // case float_te:
-    //     ret = code_seq_add_to_end(ret, code_fsw(T9, V0, offset_count));
-    //     break;
-    // case bool_te:
-    //     ret = code_seq_add_to_end(ret, code_sw(T9, V0, offset_count));
-    //     break;
-    // default:
-    //     bail_with_error("Bad var_type (%d) for ident in assignment stmt!", id_use_get_attrs(stmt.idu)->type);
-    //     break;
-    // }
     return ret;
 }
 
@@ -434,6 +361,7 @@ extern code_seq gen_code_call_stmt(call_stmt_t stmt) {
     code_seq ret = code_seq_empty();
     return ret;
 }
+
 // Generate code for the if-statment given by stmt
 extern code_seq gen_code_while_stmt(while_stmt_t stmt) {
     code_seq ret = gen_code_condition(stmt.condition);
@@ -453,8 +381,6 @@ extern code_seq gen_code_skip_stmt(skip_stmt_t stmt) {
     code_seq ret = code_seq_empty();
     return ret;
 }
-// Generate code for the skip statment, stmt
-// extern code_seq gen_code_skip_stmt(skip_stmt_t stmt) {}
 
 // Generate code for stmt
 // the "begin_stmt_t" struct. doesn't have a "var_decls" attribute.
@@ -484,12 +410,10 @@ extern code_seq gen_code_condition(condition_t cond){
 // Generate code for cond, putting its truth value
 extern code_seq gen_code_odd_condition(odd_condition_t cond){
     code_seq ret = gen_code_expr(cond.expr);
-    // code_seq_debug_print(stdout, ret);
 
     // load top of the stack (the second operand) into AT
     ret = code_seq_add_to_end(ret, code_addi(0, A0, 2));
     ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
-    // code_seq_debug_print(stdout, ret);
 
     // start out by doing the comparison
     // and skipping the next 2 instructions if it's true
@@ -497,7 +421,6 @@ extern code_seq gen_code_odd_condition(odd_condition_t cond){
     ret = code_seq_add_to_end(ret, code_div(V0, A0));
     ret = code_seq_add_to_end(ret, code_mfhi(V0));
     ret = code_seq_concat(ret, code_push_reg_on_stack(V0));
-    // code_seq_debug_print(stdout, ret);
         
     return ret;
 }
@@ -525,7 +448,6 @@ extern code_seq gen_code_rel_op(token_t rel_op)
     // and skipping the next 2 instructions if it's true
     code_seq do_op = code_seq_empty();
 
-    // id_attrs typ = id_use_get_attrs(stmt.idu)->kind;
     switch (rel_op.code)
     {
     case eqsym:
@@ -599,15 +521,7 @@ extern code_seq gen_code_ident(ident_t id)
     assert(id_use_get_attrs(id.idu) != NULL);
     unsigned int offset_count = id_use_get_attrs(id.idu)->offset_count;
     assert(offset_count <= USHRT_MAX);
-    // id_attrs typ = id_use_get_attrs(id.idu)->kind;
-    //  if (typ == float_te)
-    //  {
-    //      ret = code_seq_add_to_end(ret,
-    //                                code_flw(T9, V0, offset_count));
-    //  }
-    //  else
-    //  {
+
     ret = code_seq_add_to_end(ret, code_lw(T9, V0, offset_count));
-    //}
     return code_seq_concat(ret, code_push_reg_on_stack(V0));
 }
