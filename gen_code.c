@@ -273,6 +273,7 @@ extern code_seq gen_code_arith_op(token_t arith_op)
         break;
     case divsym:
         do_op = code_seq_add_to_end(do_op, code_div(V0, AT));
+        do_op = code_seq_add_to_end(do_op, code_mflo(V0));
         break;
     default:
         bail_with_error("Unexpected arithOp (%d) in gen_code_arith_op", arith_op.code);
