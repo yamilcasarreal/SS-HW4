@@ -15,8 +15,8 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     code_seq main_cs;
     // We want to make the main program's AR look like all blocks... so:
     // allocate space and initialize any variables
-    main_cs = gen_code_const_decls(prog.const_decls);
-    main_cs = code_seq_concat(main_cs, gen_code_var_decls(prog.var_decls));
+    main_cs = gen_code_var_decls(prog.var_decls);
+    main_cs = code_seq_concat(main_cs, gen_code_const_decls(prog.const_decls));
     int vars_len_in_bytes = (code_seq_size(main_cs) / 2) * BYTES_PER_WORD;
     // there is no static link for the program as a whole,
     // so nothing to do for saving FP into A0 as would be done for a block
@@ -204,6 +204,33 @@ code_seq gen_code_write_stmt(write_stmt_t stmt)
     return ret;
 }
 
+code_seq gen_code_op(token_t op)
+{
+    switch (op.code)
+    {
+    case eqsym:
+    case neqsym:
+    case ltsym:
+    case leqsym:
+    case gtsym:
+    case geqsym:
+        return gen_code_rel_op(op);
+        break;
+    case plussym:
+    case minussym:
+    case multsym:
+    case divsym:
+        // assert(typ == float_te);
+        return gen_code_arith_op(op);
+        break;
+    default:
+        bail_with_error("Unknown token code (%d) in gen_code_op",
+                        op.code);
+        break;
+    }
+    return code_seq_empty();
+}
+
 // Generate code for the expression exp
 extern code_seq gen_code_binary_op_expr(binary_op_expr_t exp)
 {
@@ -214,7 +241,7 @@ extern code_seq gen_code_binary_op_expr(binary_op_expr_t exp)
     // type_exp_e t1 = ast_expr_type(*(exp.expr1));
     // assert(ast_expr_type(*(exp.expr2)) == t1);
     // do the operation, putting the result on the stack
-    // ret = code_seq_concat(ret, gen_code_op(exp.arith_op, t1));
+    ret = code_seq_concat(ret, gen_code_op(exp.arith_op));
     return ret;
 }
 
@@ -305,8 +332,8 @@ extern code_seq gen_code_const_defs(const_defs_t cdfs)
 }
 // Generate code for the const-def, cdf
 extern code_seq gen_code_const_def(const_def_t cdf){
-    code_seq ret = code_seq_singleton(code_addi(SP, SP, -BYTES_PER_WORD));
-    ret = code_seq_concat(ret, gen_code_number(cdf.number));
+    // code_seq ret = code_seq_singleton(code_addi(SP, SP, -BYTES_PER_WORD));
+    code_seq ret = gen_code_number(cdf.number);
     return ret;
 }
 
@@ -370,6 +397,7 @@ extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
     ret = code_seq_concat(ret, code_compute_fp(T9, stmt.idu->levelsOutward));
     unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
     assert(offset_count <= USHRT_MAX);
+    ret = code_seq_add_to_end(ret, code_sw(T9, V0, offset_count));
     // switch (id_use_get_attrs(stmt.idu)->kind)
     // {
 
@@ -399,16 +427,7 @@ extern code_seq gen_code_skip_stmt(skip_stmt_t stmt) {}
 // the "begin_stmt_t" struct. doesn't have a "var_decls" attribute.
 extern code_seq gen_code_begin_stmt(begin_stmt_t stmt)
 {
-    code_seq ret;
-    // allocate space and initialize any variables in block
-    ret = gen_code_stmts(stmt.stmts);
-    int vars_len_in_bytes = (code_seq_size(ret) / 2) * BYTES_PER_WORD;
-    // in FLOAT, surrounding scope's base is FP, so that is the static link
-    ret = code_seq_add_to_end(ret, code_add(0, FP, A0));
-    ret = code_seq_concat(ret, code_save_registers_for_AR());
-    ret = code_seq_concat(ret, gen_code_stmts(stmt.stmts));
-    ret = code_seq_concat(ret, code_restore_registers_from_AR());
-    ret = code_seq_concat(ret, code_deallocate_stack_space(vars_len_in_bytes));
+    code_seq ret = gen_code_stmts(stmt.stmts);
     return ret;
 }
 
