@@ -437,10 +437,9 @@ extern code_seq gen_code_while_stmt(while_stmt_t stmt) {
 
     code_seq cbody = gen_code_stmt(*(stmt.body));
     int cbody_len = code_seq_size(cbody);
-    ret = code_seq_add_to_end(ret, code_beq(V0, 0, cbody_len));
+    ret = code_seq_add_to_end(ret, code_beq(V0, 0, cbody_len + 1));
     ret = code_seq_concat(ret, cbody);
-
-    // ret = code_seq_add_to_end(ret, code_jmp(-code_seq_size(ret)));
+    ret = code_seq_add_to_end(ret, code_bne(V0, 0, -code_seq_size(ret)));
 
     return ret;
 }
