@@ -157,6 +157,7 @@ extern code_seq gen_code_stmts(stmts_t stmts)
     stmt_t *sp = stmts.stmts;
     while (sp != NULL)
     {
+        // code_seq_debug_print(stdout, gen_code_stmt(*sp));
         ret = code_seq_concat(ret, gen_code_stmt(*sp));
         sp = sp->next;
     }
@@ -430,9 +431,25 @@ extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
 // Generate code for stmt
 extern code_seq gen_code_call_stmt(call_stmt_t stmt) {}
 // Generate code for the if-statment given by stmt
-extern code_seq gen_code_while_stmt(while_stmt_t stmt) {}
+extern code_seq gen_code_while_stmt(while_stmt_t stmt) {
+    code_seq ret = gen_code_condition(stmt.condition);
+    ret = code_seq_concat(ret, code_pop_stack_into_reg(V0));
+
+    code_seq cbody = gen_code_stmt(*(stmt.body));
+    int cbody_len = code_seq_size(cbody);
+    ret = code_seq_add_to_end(ret, code_beq(V0, 0, cbody_len));
+    ret = code_seq_concat(ret, cbody);
+
+    // ret = code_seq_add_to_end(ret, code_jmp(-code_seq_size(ret)));
+
+    return ret;
+}
+
 // Generate code for the skip statment, stmt
-extern code_seq gen_code_skip_stmt(skip_stmt_t stmt) {}
+extern code_seq gen_code_skip_stmt(skip_stmt_t stmt) {
+    code_seq ret = code_seq_empty();
+    return ret;
+}
 // Generate code for the skip statment, stmt
 // extern code_seq gen_code_skip_stmt(skip_stmt_t stmt) {}
 
