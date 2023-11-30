@@ -1,0 +1,14 @@
+# procedure call with global and local idents
+var result;
+
+procedure AddTwoNumbers;
+   const a = 2, b = 1;
+
+   begin
+      result := a + b; 
+   end;
+
+begin
+   call AddTwoNumbers
+   write result # should be 3
+end.

@@ -1,0 +1,18 @@
+# Undefined nested procedure
+
+const
+   a = 10;
+var
+   b;
+
+procedure SelfRecursiveProc;
+   begin
+      if b > 0 then
+         call SelfRecursive  # Error: Undefined procedure SelfRecursive
+         else skip
+   end;
+
+begin
+   b := a;
+   call SelfRecursiveProc
+end.

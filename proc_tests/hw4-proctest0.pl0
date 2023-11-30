@@ -1,0 +1,10 @@
+# Procedure call with no idents
+
+procedure SimpleProcedure;
+   begin
+      write 1;
+   end;
+
+begin
+   call SimpleProcedure;
+end.

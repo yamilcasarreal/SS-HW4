@@ -1,0 +1,11 @@
+# nested procedure call with globals
+const test = 1;
+
+procedure Outer;
+   procedure Inner;
+      write test; # Should write 1
+   write test; # Should write 1
+
+begin
+   call Outer
+end.

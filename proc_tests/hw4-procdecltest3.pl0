@@ -1,7 +1,7 @@
-# Correct Nested Procedure Declarations and Scopes
+# Undefined variable in nested procedure
 
 const
-   a = 10.
+   a = 10;
 var
    b, c;
 
@@ -10,14 +10,15 @@ procedure Outer;
       d;
    procedure Inner;
       begin
-         d := b + c;
+         d := e;  # Error: Undefined variable e
+         write d
       end;
    begin
-      Inner;
+      call Inner
    end;
 
 begin
    b := a;
    c := a + 5;
-   Outer;
+   call Outer
 end.

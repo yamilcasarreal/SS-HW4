@@ -1,0 +1,12 @@
+# procedure call with local idents
+
+procedure AddTwoNumbers;
+   const a = 2, b = 1;
+
+   begin
+      write a + b; #should be 3
+   end;
+
+begin
+   call AddTwoNumbers
+end.

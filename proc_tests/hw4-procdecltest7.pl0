@@ -1,23 +1,24 @@
-# Should be correct
+# Duplicate of nested procedure
 
 const
-   a = 10.
+   a = 10;
 var
    b, c;
 
 procedure Outer;
-   var
-      d;
    procedure Inner;
+      write 1;
+   procedure Inner; # Error duplicate procedure
       begin
          d := b + c;
+         write d
       end;
    begin
-      Inner;
+      call Inner
    end;
 
 begin
    b := a;
    c := a + 5;
-   Outer;
+   call Outer
 end.

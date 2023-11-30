@@ -1,0 +1,18 @@
+# Undefined variable in procedure
+
+const
+   a = 10;
+var
+   b;
+
+procedure RecursiveProc;
+   begin
+      if e > 0 then  # Error: Undefined variable e
+         call RecursiveProc
+         else skip;
+      skip
+   end;
+
+begin
+   call RecursiveProc
+end.

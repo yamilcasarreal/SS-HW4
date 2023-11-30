@@ -1,0 +1,20 @@
+# duplicate const in nested procedure
+const
+   a = 10;
+var
+   b, c;
+
+procedure Outer;
+   procedure Inner; 
+      const b = 1;
+      var b;
+      write 1;
+   begin
+      call Inner
+   end;
+
+begin
+   b := a;
+   c := a + 5;
+   call Outer
+end.

@@ -1,0 +1,17 @@
+# duplicate const in procedure
+
+const
+   a = 10;
+var
+   b, c;
+
+procedure Outer;
+   const d = 2;
+   var d;
+   write 1;
+
+begin
+   b := a;
+   c := a + 5;
+   call Outer
+end.

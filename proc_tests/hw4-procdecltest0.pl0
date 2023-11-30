@@ -1,0 +1,16 @@
+# Undefined Procedure
+
+const
+   a = 10;
+var
+   b, c;
+
+procedure Proc1;
+   begin
+      b := a + 5;
+      write b
+   end;
+
+begin
+   call Proc2  # Error: Undefined procedure Proc2
+end.

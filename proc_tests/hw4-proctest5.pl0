@@ -1,0 +1,15 @@
+# recursive procedure call
+var result;
+
+procedure AddTwoNumbers;
+   result := result + 1
+   
+   if result < 3
+      then call AddTwoNumbers
+      else skip
+
+begin
+   result := 0
+   call AddTwoNumbers
+   write result # should write 3
+end.

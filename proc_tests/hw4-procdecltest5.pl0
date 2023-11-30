@@ -1,0 +1,17 @@
+# duplicate variable in procedure
+
+const
+   a = 10;
+var
+   b, c;
+
+procedure Outer;
+   var d;
+   var d;
+   write 1;
+
+begin
+   b := a;
+   c := a + 5;
+   call Outer
+end.

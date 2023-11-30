@@ -1,0 +1,19 @@
+# nested procedure call with vars in different scopes
+
+const global = 1;
+
+procedure Outer;
+   const outerscope = 2;
+
+   procedure Inner;
+      const innerscope = 3;
+      begin 
+        write outerscope; # Should write 2
+        write global # Should write 1
+      end.
+
+   write global; # Should write 1
+
+begin
+   call Outer
+end.
