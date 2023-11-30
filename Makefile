@@ -40,8 +40,13 @@ VMTESTS = hw4-vmtest0.pl0 hw4-vmtest1.pl0 hw4-vmtest2.pl0 hw4-vmtest3.pl0 \
 	hw4-vmtest4.pl0 hw4-vmtest5.pl0 hw4-vmtest6.pl0 hw4-vmtest7.pl0 \
 	hw4-vmtest8.pl0 hw4-vmtest9.pl0 hw4-vmtestA.pl0 hw4-vmtestB.pl0 \
 	hw4-vmtestC.pl0
+PROCTESTS = hw4-proctest0.pl0 hw4-proctest1.pl0 hw4-proctest2.pl0 hw4-proctest3.pl0 \
+	hw4-proctest4.pl0 hw4-proctest5.pl0 hw4-proctest6.pl0 hw4-proctest7.pl0 \
+	hw4-proctest8.pl0 hw4-proctest9.pl0 hw4-proctestA.pl0 hw4-proctestB.pl0 \
+	hw4-proctestC.pl0 hw4-proctestD.pl0 hw4-proctestE.pl0 hw4-proctestF.pl0 hw4-proctestG.pl0 \
+	 hw4-proctestH.pl0 hw4-proctestI.pl0 hw4-proctestJ.pl0
 # you can add your own tests to alltests
-ALLTESTS = $(GTESTS) $(READTESTS) $(VMTESTS)
+ALLTESTS = $(GTESTS) $(READTESTS) $(VMTESTS) $(PROCTESTS)
 EXPECTEDOUTPUTS = $(ALLTESTS:.pl0=.out)
 STUDENTTESTOUTPUTS = $(ALLTESTS:.pl0=.myo)
 
@@ -131,6 +136,27 @@ cleanall: clean
 check-outputs: $(COMPILER) $(VM)
 	@DIFFS=0; \
 	for f in `echo $(ALLTESTS) | sed -e 's/\\.$(SUF)//g'`; \
+	do \
+		echo running ./$(COMPILER) on "$$f.$(SUF)"; \
+		$(RM) "$$f.bof"; \
+		./$(COMPILER) "$$f.$(SUF)" ; \
+		echo running $(RUNVM) on "$$f.bof"; \
+		$(RM) "$$f.myo"; \
+		cat char-inputs.txt | $(RUNVM) "$$f.bof" > "$$f.myo" 2>&1; \
+		diff -w -B "$$f.out" "$$f.myo" && echo 'passed!' || DIFFS=1; \
+	done; \
+	if test 0 = $$DIFFS; \
+	then \
+		echo 'All output tests passed!'; \
+	else \
+		echo 'Some output test(s) failed!'; \
+	fi
+
+# main target for testing
+.PHONY: check-proc-outputs
+check-proc-outputs: $(COMPILER) $(VM)
+	@DIFFS=0; \
+	for f in `echo $(PROCTESTS) | sed -e 's/\\.$(SUF)//g'`; \
 	do \
 		echo running ./$(COMPILER) on "$$f.$(SUF)"; \
 		$(RM) "$$f.bof"; \
