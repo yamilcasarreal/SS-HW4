@@ -1,0 +1,21 @@
+# Correct procedure calls
+
+const
+   a = 10.
+var
+   b, c;
+
+procedure Proc1;
+   begin
+      b := a + 5;
+   end;
+
+procedure Proc2;
+   begin
+      c := b * 2;
+   end;
+
+begin
+   Proc1;
+   Proc2;
+end.

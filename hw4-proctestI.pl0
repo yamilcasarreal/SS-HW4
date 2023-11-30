@@ -1,0 +1,15 @@
+# Incorrect Procedure Calls (Undefined Variable in Procedure)
+
+const
+   a = 10.
+var
+   b;
+
+procedure Proc1;
+   begin
+      b := c;  # Error: Undefined variable c 
+   end;
+
+begin
+   Proc1;
+end.

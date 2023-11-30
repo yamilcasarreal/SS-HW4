@@ -1,0 +1,17 @@
+# Incorrect Self-Recursive Procedure (Undefined Procedure)
+
+const
+   a = 10.
+var
+   b;
+
+procedure SelfRecursiveProc;
+   begin
+      if b > 0 then
+         SelfRecursive;  # Error: Undefined procedure SelfRecursive
+   end;
+
+begin
+   b := a;
+   SelfRecursiveProc;
+end.

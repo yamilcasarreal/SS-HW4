@@ -1,0 +1,23 @@
+# Incorrect nested procedure decl
+
+const
+   a = 10.
+var
+   b, c;
+
+procedure Outer;
+   var
+      c;  # Error: Duplicate identifier
+   procedure Inner;
+      begin
+         d := b + c;
+      end;
+   begin
+      Inner;
+   end;
+
+begin
+   b := a;
+   c := a + 5;
+   Outer;
+end.

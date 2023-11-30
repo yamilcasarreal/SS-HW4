@@ -1,0 +1,15 @@
+# Incorrect Procedure Calls (Incorrect Argument Type)
+
+const
+   a = 10.
+var
+   b;
+
+procedure Proc1(x: integer);
+   begin
+      b := x;
+   end;
+
+begin
+   Proc1(a);  # Error: Incorrect argument type 
+end.

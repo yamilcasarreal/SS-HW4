@@ -1,0 +1,16 @@
+# Incorrect recursive procedure call (Undefined Variable)
+
+const
+   a = 10.
+var
+   b;
+
+procedure RecursiveProc;
+   begin
+      if e > 0 then  # Error: Undefined variable e
+         RecursiveProc;
+   end;
+
+begin
+   RecursiveProc;
+end.

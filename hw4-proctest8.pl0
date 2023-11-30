@@ -1,0 +1,18 @@
+# Self Recursive Procedure
+
+const
+   a = 10.
+var
+   b;
+
+procedure SelfRecursiveProc;
+   begin
+      if b > 0 then
+         SelfRecursiveProc;
+      b := b - 1;
+   end;
+
+begin
+   b := a;
+   SelfRecursiveProc;
+end.

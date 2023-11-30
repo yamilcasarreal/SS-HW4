@@ -1,0 +1,17 @@
+# Incorrect Nested Scopes (Duplicate Variable)
+
+const
+   a = 10.
+var
+   b, c;
+
+procedure Outer;
+   var
+      c;  # Error: Duplicate identifier 
+   begin
+      c := b + a;
+   end;
+
+begin
+   Outer;
+end.
