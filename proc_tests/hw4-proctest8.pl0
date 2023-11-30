@@ -1,1 +1,23 @@
 # nested recursive procedure call
+
+var result;
+
+procedure IncreaseByOne;
+   if result < 8
+      then
+         procedure Inner;
+            begin
+               result := result + 1 ;
+               write result; # should write result + 1 
+               call IncreaseByOne 
+            end
+         begin
+            call Inner
+         end
+         
+   else skip
+
+begin
+   result := 0;
+   call IncreaseByOne
+end.
