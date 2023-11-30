@@ -8,7 +8,7 @@ proceedure One;
          var b := a + 1;
          procedure Three;
             var c := b + 1;
-            write c;
+            write c; # Should write value of b + 1
          begin
             call Three
          end
