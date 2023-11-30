@@ -1,1 +1,20 @@
 # multiples levels of nesting with multiple nested procedures
+
+var a;
+
+proceedure One;
+   a := 5;
+      proceedure Two;
+         var b := a + 1;
+         procedure Three;
+            var c := b + 1;
+            write c;
+         begin
+            call Three
+         end
+      begin
+         call Two
+      end
+begin
+   call One
+end
