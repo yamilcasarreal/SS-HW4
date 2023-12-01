@@ -7,7 +7,7 @@ var
 
 procedure Outer;
    var d;
-   var d;
+   var d; # error d is a duplicate var
    write 1;
 
 begin

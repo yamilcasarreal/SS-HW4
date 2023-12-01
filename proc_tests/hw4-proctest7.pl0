@@ -10,7 +10,7 @@ procedure Outer;
       begin 
         write outerscope; # Should write 2
         write global # Should write 1
-      end.
+      end;
 
    write global; # Should write 1
 

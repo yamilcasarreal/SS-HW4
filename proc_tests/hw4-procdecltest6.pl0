@@ -7,7 +7,7 @@ var
 
 procedure Outer;
    const d = 2;
-   var d;
+   var d;  # error d is already defined
    write 1;
 
 begin

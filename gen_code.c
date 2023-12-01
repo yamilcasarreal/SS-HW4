@@ -23,14 +23,19 @@ extern void gen_code_program(BOFFILE bf, block_t prog)
     code_seq main_cs;
     // We want to make the main program's AR look like all blocks... so:
     // allocate space and initialize any variables
+
     code_seq vars = gen_code_var_decls(prog.var_decls);
     int vars_len_in_bytes = (code_seq_size(vars) / 3) * BYTES_PER_WORD;
 
     code_seq constants = gen_code_const_decls(prog.const_decls);
     int const_len_in_bytes = (code_seq_size(constants) / 3) * BYTES_PER_WORD;
 
+    code_seq procs = gen_code_proc_decls(prog.proc_decls);
+    int proc_len_in_bytes = (code_seq_size(procs) / 3) * BYTES_PER_WORD;
+
     main_cs = code_seq_concat(vars, constants);
-    int total_len_in_bytes = const_len_in_bytes + vars_len_in_bytes;
+    main_cs = code_seq_concat(main_cs, procs);
+    int total_len_in_bytes = const_len_in_bytes + vars_len_in_bytes + proc_len_in_bytes;
 
     // there is no static link for the program as a whole,
     // so nothing to do for saving FP into A0 as would be done for a block
@@ -87,6 +92,65 @@ void gen_code_output_seq(BOFFILE bf, code_seq cs)
         instruction_write_bin_instr(bf, inst);
         cs = code_seq_rest(cs);
     }
+}
+
+extern code_seq gen_code_proc_decls(proc_decls_t pds)
+{
+    code_seq ret = code_seq_empty();
+    proc_decl_t *pd = pds.proc_decls;
+    while (pd != NULL)
+    {
+        // generate these in reverse order,
+        // so the addressing offsets work properly
+        ret = code_seq_concat(gen_code_proc_decl(*pd), ret);
+        pd = pd->next;
+    }
+    return ret;
+}
+
+extern code_seq gen_code_proc_decl(proc_decl_t pd)
+{
+    return gen_code_block(*pd.block);
+}
+
+// Generate code for the given AST
+extern code_seq gen_code_block(block_t blk)
+{
+    code_seq ret;
+    // We want to make the main program's AR look like all blocks... so:
+    // allocate space and initialize any variables
+
+    code_seq vars = gen_code_var_decls(blk.var_decls);
+    int vars_len_in_bytes = (code_seq_size(vars) / 3) * BYTES_PER_WORD;
+
+    code_seq constants = gen_code_const_decls(blk.const_decls);
+    int const_len_in_bytes = (code_seq_size(constants) / 3) * BYTES_PER_WORD;
+
+    code_seq procs = gen_code_proc_decls(blk.proc_decls);
+    int proc_len_in_bytes = (code_seq_size(procs) / 3) * BYTES_PER_WORD;
+
+    ret = code_seq_concat(vars, constants);
+    ret = code_seq_concat(ret, procs);
+    int total_len_in_bytes = const_len_in_bytes + vars_len_in_bytes + proc_len_in_bytes;
+
+    // there is no static link for the program as a whole,
+    // so nothing to do for saving FP into A0 as would be done for a block
+    ret = code_seq_concat(ret, code_save_registers_for_AR());
+    ret = code_seq_concat(ret, gen_code_stmt(blk.stmt));
+    ret = code_seq_concat(ret, code_restore_registers_from_AR());
+    ret = code_seq_concat(ret, code_deallocate_stack_space(total_len_in_bytes));
+}
+
+// Generate code for stmt
+extern code_seq gen_code_call_stmt(call_stmt_t id) {
+    assert(id.idu != NULL);
+    code_seq ret = code_compute_fp(T9, id.idu->levelsOutward);
+    assert(id_use_get_attrs(id.idu) != NULL);
+    unsigned int offset_count = id_use_get_attrs(id.idu)->offset_count;
+    assert(offset_count <= USHRT_MAX);
+
+    ret = code_seq_add_to_end(ret, code_lw(T9, V0, offset_count));
+    return code_seq_concat(ret, code_push_reg_on_stack(V0));
 }
 
 // Generate code for the var_decls_t vds to out
@@ -278,8 +342,6 @@ extern code_seq gen_code_number(number_t num)
     return code_seq_concat(code_seq_singleton(code_lw(GP, V0, global_offset)), code_push_reg_on_stack(V0));
 }
 
-// Generate code for the given AST
-extern code_seq gen_code_block(block_t blk);
 // Generate code for the const-decls, cds
 extern code_seq gen_code_const_decls(const_decls_t cds)
 {
@@ -361,12 +423,6 @@ extern code_seq gen_code_assign_stmt(assign_stmt_t stmt)
     unsigned int offset_count = id_use_get_attrs(stmt.idu)->offset_count;
     assert(offset_count <= USHRT_MAX);
     ret = code_seq_add_to_end(ret, code_sw(T9, V0, offset_count));
-    return ret;
-}
-
-// Generate code for stmt
-extern code_seq gen_code_call_stmt(call_stmt_t stmt) {
-    code_seq ret = code_seq_empty();
     return ret;
 }
 

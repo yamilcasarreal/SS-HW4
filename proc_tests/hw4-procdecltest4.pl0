@@ -10,7 +10,7 @@ procedure Outer;
       d;
     write 1;
 
-procedure Outer;
+procedure Outer; # Outer is a duplicate procedure
     write 1;
 
 begin

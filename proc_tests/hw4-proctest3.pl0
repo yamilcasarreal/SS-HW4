@@ -5,10 +5,10 @@ procedure AddTwoNumbers;
    const a = 2, b = 1;
 
    begin
-      result := a + b; 
+      result := a + b
    end;
 
 begin
-   call AddTwoNumbers
+   call AddTwoNumbers;
    write result # should be 3
 end.

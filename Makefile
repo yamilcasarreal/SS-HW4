@@ -40,11 +40,21 @@ VMTESTS = hw4-vmtest0.pl0 hw4-vmtest1.pl0 hw4-vmtest2.pl0 hw4-vmtest3.pl0 \
 	hw4-vmtest4.pl0 hw4-vmtest5.pl0 hw4-vmtest6.pl0 hw4-vmtest7.pl0 \
 	hw4-vmtest8.pl0 hw4-vmtest9.pl0 hw4-vmtestA.pl0 hw4-vmtestB.pl0 \
 	hw4-vmtestC.pl0
-PROCTESTS = hw4-proctest0.pl0 hw4-proctest1.pl0 hw4-proctest2.pl0 hw4-proctest3.pl0 \
-	hw4-proctest4.pl0 hw4-proctest5.pl0 hw4-proctest6.pl0 hw4-proctest7.pl0 \
-	hw4-proctest8.pl0 hw4-proctest9.pl0 hw4-proctestA.pl0 hw4-proctestB.pl0 \
-	hw4-proctestC.pl0 hw4-proctestD.pl0 hw4-proctestE.pl0 hw4-proctestF.pl0 hw4-proctestG.pl0 \
-	 hw4-proctestH.pl0 hw4-proctestI.pl0 hw4-proctestJ.pl0
+
+# The decl tests handle procedure related declaration errors, run using make check-decl-outputs
+DECLTESTS = proc_tests/hw4-procdecltest0.pl0 proc_tests/hw4-procdecltest1.pl0 \
+	proc_tests/hw4-procdecltest2.pl0 proc_tests/hw4-procdecltest3.pl0 \
+	proc_tests/hw4-procdecltest4.pl0 proc_tests/hw4-procdecltest5.pl0 \
+	proc_tests/hw4-procdecltest6.pl0 proc_tests/hw4-procdecltest7.pl0 \
+	proc_tests/hw4-procdecltest8.pl0 proc_tests/hw4-procdecltest9.pl0
+
+# Code generation tests involving procedures
+PROCTESTS = proc_tests/hw4-proctest0.pl0 proc_tests/hw4-proctest1.pl0 \
+	proc_tests/hw4-proctest2.pl0 proc_tests/hw4-proctest3.pl0 \
+	proc_tests/hw4-proctest4.pl0 proc_tests/hw4-proctest5.pl0 \
+	proc_tests/hw4-proctest6.pl0 proc_tests/hw4-proctest7.pl0 \
+	proc_tests/hw4-proctest8.pl0 proc_tests/hw4-proctest9.pl0
+
 # you can add your own tests to alltests
 ALLTESTS = $(GTESTS) $(READTESTS) $(VMTESTS) $(PROCTESTS)
 EXPECTEDOUTPUTS = $(ALLTESTS:.pl0=.out)
@@ -153,17 +163,14 @@ check-outputs: $(COMPILER) $(VM)
 	fi
 
 # main target for testing
-.PHONY: check-proc-outputs
-check-proc-outputs: $(COMPILER) $(VM)
+.PHONY: check-decl-outputs
+check-decl-outputs: $(COMPILER) $(VM)
 	@DIFFS=0; \
-	for f in `echo $(PROCTESTS) | sed -e 's/\\.$(SUF)//g'`; \
+	for f in `echo $(DECLTESTS) | sed -e 's/\\.$(SUF)//g'`; \
 	do \
 		echo running ./$(COMPILER) on "$$f.$(SUF)"; \
 		$(RM) "$$f.bof"; \
-		./$(COMPILER) "$$f.$(SUF)" ; \
-		echo running $(RUNVM) on "$$f.bof"; \
-		$(RM) "$$f.myo"; \
-		cat char-inputs.txt | $(RUNVM) "$$f.bof" > "$$f.myo" 2>&1; \
+		./$(COMPILER) "$$f.$(SUF)" > "$$f.myo" 2>&1; \
 		diff -w -B "$$f.out" "$$f.myo" && echo 'passed!' || DIFFS=1; \
 	done; \
 	if test 0 = $$DIFFS; \
@@ -175,7 +182,7 @@ check-proc-outputs: $(COMPILER) $(VM)
 
 $(SUBMISSIONZIPFILE): *.c *.h $(STUDENTTESTOUTPUTS)
 	$(ZIP) $(SUBMISSIONZIPFILE) $(PL0).y $(PL0)_lexer.l *.c *.h Makefile
-	$(ZIP) $(SUBMISSIONZIPFILE) $(STUDENTTESTOUTPUTS) $(ALLTESTS) $(EXPECTEDOUTPUTS)
+	$(ZIP) $(SUBMISSIONZIPFILE) $(STUDENTTESTOUTPUTS) $(GTESTS) $(READTESTS) $(VMTESTS) $(EXPECTEDOUTPUTS) ./proc_tests ./vm
 
 # developer's section below...
 

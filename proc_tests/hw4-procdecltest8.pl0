@@ -7,7 +7,7 @@ var
 procedure Outer;
    procedure Inner; 
       var b;
-      var b;
+      var b; # b is a duplicate var
       write 1;
    begin
       call Inner

@@ -7,7 +7,7 @@ var
 procedure Outer;
    procedure Inner; 
       const b = 1;
-      var b;
+      var b;  # b is already defined
       write 1;
    begin
       call Inner

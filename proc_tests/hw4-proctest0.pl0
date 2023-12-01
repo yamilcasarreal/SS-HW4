@@ -2,9 +2,9 @@
 
 procedure SimpleProcedure;
    begin
-      write 1;
+      write 1
    end;
 
 begin
-   call SimpleProcedure;
+   call SimpleProcedure
 end.

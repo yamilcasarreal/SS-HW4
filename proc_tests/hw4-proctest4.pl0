@@ -3,18 +3,18 @@ var result;
 
 procedure AddTwoNumbers;
    const a = 2, b = 1;
-   result := 0
 
-   while result < (a + b)
+   while 3 < 3
    do
       begin
          if result = 1
-            then write 1 # Should write 1
-            else skip
+            then write 1
+            else skip;
          result := result + 1
-      end
+      end;
 
 begin
-   call AddTwoNumbers
-   write result # should write 3
+   result := 0;
+   call AddTwoNumbers;
+   write result # should write 0
 end.

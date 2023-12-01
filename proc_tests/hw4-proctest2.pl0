@@ -4,7 +4,7 @@ procedure AddTwoNumbers;
    const a = 2, b = 1;
 
    begin
-      write a + b; #should be 3
+      write a + b #should be 3
    end;
 
 begin

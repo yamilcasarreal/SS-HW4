@@ -3,19 +3,17 @@
 var result;
 
 procedure IncreaseByOne;
+   procedure Inner;
+      begin
+         result := result + 1 ;
+         write result; # should write result + 1 
+         call IncreaseByOne 
+      end;
+
    if result < 8
       then
-         procedure Inner;
-            begin
-               result := result + 1 ;
-               write result; # should write result + 1 
-               call IncreaseByOne 
-            end
-         begin
-            call Inner
-         end
-         
-   else skip
+         call Inner
+      else skip;
 
 begin
    result := 0;

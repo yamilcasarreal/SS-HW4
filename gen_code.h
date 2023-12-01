@@ -51,10 +51,10 @@ extern code_seq gen_code_var_decl(var_decl_t vd);
 extern code_seq gen_code_idents(idents_t idents);
 
 // (Stub for:) Generate code for the procedure declarations
-extern void gen_code_proc_decls(proc_decls_t pds);
+extern code_seq gen_code_proc_decls(proc_decls_t pds);
 
 // (Stub for:) Generate code for a procedure declaration
-extern void gen_code_proc_decl(proc_decl_t pd);
+extern code_seq gen_code_proc_decl(proc_decl_t pd);
 
 // Generate code for stmt
 extern code_seq gen_code_stmt(stmt_t stmt);
